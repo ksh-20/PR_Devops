@@ -1,0 +1,470 @@
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE HEADER                                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div class="tab-header" style="margin-bottom:1.25rem;">
+  <div style="text-align:center; margin-bottom:1.25rem;">
+    <h1 class="page-title-centered" style="margin:0; font-size:2.25rem; color:#1e293b; font-weight:700;">
+      Azure Resources &amp; Cost Analytics
+    </h1>
+  </div>
+
+  <!-- Control bar -->
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; background:#f8fafc;
+              border:1.0px solid #e2e8f0; padding:0.75rem 1.125rem; border-radius:0.625rem;">
+
+    <!-- Project selector -->
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+      <label for="azure-proj-select" style="font-size:0.8125rem; color:#475569; white-space:nowrap;">Azure Project:</label>
+      <input id="azure-proj-select" class="month-dropdown" style="width:12rem; padding:0.375rem 0.75rem; font-size:0.8125rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
+        list="azure-projects-list"
+        [value]="projectSearch || selectedAzureProject || ''"
+        (focus)="projectSearch = ''; $any($event.target).value = ''"
+        (blur)="projectSearch = selectedAzureProject || ''; $any($event.target).value = selectedAzureProject || ''"
+        (input)="projectSearch = $any($event.target).value"
+        (change)="onAzureProjectChange($event)"
+        placeholder="Select Azure Project" />
+      <datalist id="azure-projects-list">
+        @for (proj of filteredAzureProjects; track proj) {
+        <option [value]="proj">{{ proj }}</option>
+        }
+        @empty {
+          <option [value]="projectSearch">N/A</option>
+        }
+      </datalist>
+    </div>
+
+    <!-- Subscription selector -->
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+      <label for="sub-select" style="font-size:0.8125rem; color:#475569; white-space:nowrap;">Subscription:</label>
+      <input id="sub-select" class="month-dropdown" style="width:12rem; padding:0.375rem 0.75rem; font-size:0.8125rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
+        [disabled]="!selectedAzureProject"
+        list="azure-subs-list"
+        [value]="subSearch || selectedSubscriptionName || ''"
+        (focus)="subSearch = ''; $any($event.target).value = ''"
+        (blur)="subSearch = selectedSubscriptionName || ''; $any($event.target).value = selectedSubscriptionName || ''"
+        (input)="subSearch = $any($event.target).value"
+        (change)="onSubscriptionChange($event)"
+        placeholder="Select Subscription" />
+      <datalist id="azure-subs-list">
+        @for (sub of filteredSubscriptions; track sub.subscriptionId || $index) {
+        <option [value]="sub.displayName">{{ sub.displayName }}</option>
+        }
+        @empty {
+          <option [value]="subSearch">N/A</option>
+        }
+      </datalist>
+    </div>
+
+    <!-- Date range selector -->
+    <div style="display:flex; align-items:center; gap:0.625rem;">
+      <span style="font-size:0.8125rem; color:#475569; white-space:nowrap;">Date Range:</span>
+      <div style="display:flex; align-items:center; gap:0.375rem;">
+        <label style="font-size:0.75rem; color:#64748b;">From</label>
+        <div style="display:flex; flex-direction:column;">
+          <input type="date" class="month-dropdown" style="width:auto; font-size:0.8125rem; padding:0.3125rem 0.625rem;"
+            [min]="costTrendMinDate" [max]="costTrendMaxDate" [value]="pendingFromDate"
+            [disabled]="!selectedSubscriptionId" title="Date format: MM-DD-YYYY" placeholder="MM-DD-YYYY"
+            (change)="pendingFromDate = $any($event.target).value; onCostTrendDateChange()">
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.375rem;">
+        <label style="font-size:0.75rem; color:#64748b;">To</label>
+        <div style="display:flex; flex-direction:column;">
+          <input type="date" class="month-dropdown" style="width:auto; font-size:0.8125rem; padding:0.3125rem 0.625rem;"
+            [min]="pendingFromDate" [max]="costTrendMaxDate" [value]="pendingToDate"
+            [disabled]="!selectedSubscriptionId" title="Date format: MM-DD-YYYY" placeholder="MM-DD-YYYY"
+            (change)="pendingToDate = $any($event.target).value; onCostTrendDateChange()">
+        </div>
+      </div>
+    </div>
+
+    <button (click)="applyDateFilter()" [disabled]="!isReadyToSubmit || isLoadingAzureRange" style="padding:0.4375rem 1.375rem; font-size:0.8125rem; background:#2563eb; color:white; border:none;
+             border-radius:0.5rem; cursor:pointer; display:flex; align-items:center; gap:0.375rem;
+             white-space:nowrap; transition:background 0.2s, opacity 0.2s;"
+      [style.opacity]="!isReadyToSubmit || isLoadingAzureRange ? '0.5' : '1'">
+      @if (isSubmittingDateFilter) {
+      <span style="display:inline-block;width:0.75rem;height:0.75rem;border:0.125rem solid #fff;
+                     border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></span>
+      Loading…
+      } @else {
+      Submit
+      }
+    </button>
+
+  </div>
+</div>
+
+<!-- ── Selected Project & Subscription strip ──────────────────────────── -->
+<div style="display:flex; align-items:center; justify-content:center; gap:1.5rem; margin-bottom:1rem; padding:0.75rem 1.25rem;
+            background:#f8fafc; border:1.0px solid #e2e8f0; border-radius:0.625rem; flex-wrap:wrap; text-align:center;">
+  <span style="font-size:0.875rem; color:#64748b; font-weight:500;">Project:&nbsp;
+    <strong style="font-size:1rem; color:#1e293b; font-weight:700;">{{ selectedAzureProject || 'All' }}</strong>
+  </span>
+  <span style="width:1.0px; height:1.25rem; background:#cbd5e1; display:inline-block;"></span>
+  <span style="font-size:0.875rem; color:#64748b; font-weight:500;">Subscription:&nbsp;
+    <strong style="font-size:1rem; color:#1e293b; font-weight:700;">{{ selectedSubscriptionName || 'All' }}</strong>
+  </span>
+</div>
+
+<!-- Error banners -->
+@if (subscriptionsError) {
+<div class="error-banner">Could not load subscriptions: {{ subscriptionsError }}</div>
+} @else if (azureError) {
+<div class="error-banner">Could not load subscription details: {{ azureError }}</div>
+} @else if (!selectedAzureProject) {
+  <!-- Enterprise Cloud Spend Overview Grouped Bar Chart -->
+  <div class="chart-card" style="margin-top:1.25rem; position:relative;">
+    <div class="chart-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.25rem;">
+      <div style="flex: 1 1 0%; min-width: 0;"></div>
+      <h2 style="margin:0; font-size:1.5rem; color:#1e293b; font-weight:700; text-align:center; flex: 0 0 auto;">Current Month Spend</h2>
+      <div style="flex: 1 1 0%; min-width: 0; display:flex; justify-content:flex-end;">
+        @if (overviewData.length && !isLoadingOverview) {
+        <span style="font-size:0.75rem; color:#6b7280; font-weight:500; white-space:nowrap;">Total Cost (Current Month): ₹{{ globalOverviewTotalCost | number:'1.2-2' }}</span>
+        }
+      </div>
+    </div>
+
+    <!-- Legends -->
+    <div style="display:flex; justify-content:center; gap:1.5rem; margin-bottom:1.25rem; font-size:0.8125rem; font-weight:500;">
+      <div style="display:flex; align-items:center; gap:0.375rem;">
+        <span style="display:inline-block; width:0.75rem; height:0.75rem; border-radius:0.1875rem; background:#64748b;"></span>
+        <span style="color:#475569;">Dev/Test</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.375rem;">
+        <span style="display:inline-block; width:0.75rem; height:0.75rem; border-radius:0.1875rem; background:#3b82f6;"></span>
+        <span style="color:#475569;">Production</span>
+      </div>
+    </div>
+
+    @if (isLoadingOverview) {
+      <div style="display:flex; justify-content:space-around; align-items:flex-end; height:12.5rem; padding:0 5rem; margin-bottom:1.5rem; position:relative; overflow:hidden;">
+        <div class="skeleton" style="height:35%; width:6%; border-radius:0.375rem 0.375rem 0 0;"></div>
+        <div class="skeleton" style="height:70%; width:6%; border-radius:0.375rem 0.375rem 0 0;"></div>
+        <div class="skeleton" style="height:25%; width:6%; border-radius:0.375rem 0.375rem 0 0;"></div>
+        <div class="skeleton" style="height:60%; width:6%; border-radius:0.375rem 0.375rem 0 0;"></div>
+        <div class="skeleton" style="height:30%; width:6%; border-radius:0.375rem 0.375rem 0 0;"></div>
+        <div class="skeleton" style="height:80%; width:6%; border-radius:0.375rem 0.375rem 0 0;"></div>
+      </div>
+    } @else if (overviewError) {
+      <div class="error-inline" style="padding:2.5rem; text-align:center;">{{ overviewError }}</div>
+    } @else if (!overviewData.length) {
+      <div style="text-align:center; padding:2.5rem; color:#6b7280;">No spend data available.</div>
+    } @else {
+      <!-- Custom Tooltip -->
+      @if (hoveredOverviewBar) {
+      <div style="position:absolute; top:3.5rem; right:1.25rem; background:rgba(15, 23, 42, 0.95); color:#fff;
+                  padding:0.625rem 1rem; border-radius:0.5rem; font-size:0.8125rem; z-index:20;
+                  pointer-events:none; box-shadow:0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                  border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(4px); min-width:10rem;">
+        <div style="font-weight:600; color:#38bdf8; margin-bottom:0.25rem; font-family:'Outfit', sans-serif; font-size:0.875rem;">
+          {{ hoveredOverviewBar.project }}
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.375rem; color:#94a3b8; font-size:0.75rem;">
+          <span [style.background]="hoveredOverviewBar.rawColor"
+            style="display:inline-block; width:0.5rem; height:0.5rem; border-radius:50%;"></span>
+          {{ hoveredOverviewBar.env }}
+        </div>
+        <div style="color:#ffffff; font-size:1rem; font-weight:700; font-family:'Outfit', sans-serif;">₹{{ hoveredOverviewBar.cost | number:'1.2-2' }}</div>
+      </div>
+      }
+
+      <div style="display:flex; justify-content:center; align-items:center; width:100%; overflow-x:auto; padding:0.5rem 0;">
+        <svg viewBox="0 0 620 260" style="overflow:visible; display:block; width:100%; height:auto; max-height:40vh;">
+          <defs>
+            <linearGradient id="devTestGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stop-color="#64748b" />
+              <stop offset="100%" stop-color="#94a3b8" />
+            </linearGradient>
+            <linearGradient id="prodGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stop-color="#1d4ed8" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+
+          <!-- Horizontal Grid Lines -->
+          @for (lbl of overviewYLabels; track $index) {
+            @if ($index < overviewYLabels.length - 1) {
+            <line x1="80" [attr.y1]="20 + ($index * 40)" x2="600" [attr.y2]="20 + ($index * 40)" stroke="#f1f5f9" stroke-width="1"></line>
+            }
+          }
+
+          <!-- Y-Axis Labels -->
+          @for (lbl of overviewYLabels; track $index) {
+          <text x="70" [attr.y]="24 + ($index * 40)" text-anchor="end" fill="#64748b" font-size="11" font-family="Inter, sans-serif">{{ lbl }}</text>
+          }
+
+          <!-- Grouped Bars -->
+          @for (bar of getOverviewBars(); track $index) {
+          <path [attr.d]="bar.path" [attr.fill]="bar.color"
+            style="cursor:pointer; transition: all 0.2s ease;"
+            [style.opacity]="hoveredOverviewBar ? (hoveredOverviewBar.project === bar.project && hoveredOverviewBar.env === bar.env ? '1' : '0.4') : '1'"
+            (mouseenter)="hoveredOverviewBar = bar" (mouseleave)="hoveredOverviewBar = null">
+          </path>
+          }
+
+          <!-- X-Axis Line -->
+          <line x1="80" y1="220" x2="600" y2="220" stroke="#cbd5e1" stroke-width="1.5"></line>
+
+          <!-- X-Axis Labels -->
+          @for (lbl of getOverviewXLabels(); track $index) {
+          <text [attr.x]="lbl.x" y="240" text-anchor="middle" fill="#475569" font-weight="500" font-size="11" font-family="Inter, sans-serif">{{ lbl.text }}</text>
+          }
+        </svg>
+      </div>
+    }
+  </div>
+} @else if (!selectedSubscriptionId) {
+<div style="text-align:center; padding:2.5rem; background:var(--bg-card); border-radius:0.5rem;">
+  <p style="color:#6b7280; font-size:1rem;">Please select an Azure subscription to view cost metrics.</p>
+</div>
+} @else {
+
+
+<!-- ── Metric summary cards ──────────────────────────────────────────── -->
+<div class="cards">
+
+  <div class="card">
+    <h3>MTD Total Cost (Current Month)</h3>
+    @if (isLoadingAzure && totalCost === 0) {
+    <div class="skeleton skeleton-value"></div>
+    } @else {
+    <h2 style="color:#2563eb;">₹{{ totalCost | number:'1.2-2' }}</h2>
+    }
+  </div>
+
+  <div class="card">
+    <h3>Budgets set</h3>
+    @if (isLoadingAzure && !budgets.length) {
+    <div class="skeleton skeleton-value"></div>
+    } @else {
+    @for (b of budgets; track b.name || $index) {
+    <h2 style="color:#2563eb;">₹{{ b.amount }} ({{ b.timeGrain }})</h2>
+    } @empty {
+    <h2 style="color:#2563eb;">No budget</h2>
+    }
+    }
+  </div>
+
+</div>
+
+<!-- ── Daily Cost Trend (A – stripped "UTC" from title) ──────────────── -->
+<div class="chart-card" style="margin-top:1.25rem; position:relative;">
+  <div class="chart-header"
+    style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+    <h2 style="margin:0; text-align:center; flex:1;">Daily Cost Trend</h2>
+    @if (costTrendPoints.length) {
+    <span style="font-size:0.75rem; color:#6b7280;">{{ costTrendPoints.length }} day(s)</span>
+    }
+  </div>
+
+  @if (isLoadingCostTrend || isLoadingAzureRange) {
+  <div class="loading-container" style="padding: 2.5rem 0;">
+    <div class="spinner"></div>
+    <span class="loading-text">Loading daily costs...</span>
+  </div>
+  } @else if (costTrendError) {
+  <div class="error-inline">{{ costTrendError }}</div>
+  } @else if (!costTrendPoints.length) {
+  <div style="text-align:center; padding:2.5rem;">
+    <p style="color:#6b7280; font-size:0.875rem;">No cost data found for the selected date range. Click Submit to load.</p>
+  </div>
+  } @else {
+  <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:2.5rem; width:100%;">
+    <div class="graph-container" style="flex:1 1 41.25rem; width:100%; min-width:20rem;">
+      <svg viewBox="0 0 660 260" style="overflow:visible; display:block; width:100%; height:auto; max-height:40vh;">
+
+        @for (lbl of costTrendYLabels; track $index) {
+        <line x1="60" [attr.y1]="20 + ($index * 40)" x2="630" [attr.y2]="20 + ($index * 40)" stroke="#e2e8f0"
+          stroke-width="1"></line>
+        <!-- K – ₹ currency symbol on Y-axis -->
+        <text x="55" [attr.y]="24 + ($index * 40)" text-anchor="end" fill="#64748b" font-size="11">{{ lbl }}</text>
+        }
+
+        @if (costTrendPolyline) {
+        <polygon [attr.points]="costTrendPolyline + ' 630,220 60,220'" fill="rgba(37,99,235,0.08)"></polygon>
+        <polyline [attr.points]="costTrendPolyline" fill="none" stroke="#2563eb" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round"></polyline>
+        }
+
+        @for (c of costTrendCircles; track c.dateUtc) {
+        <circle [attr.cx]="c.x" [attr.cy]="c.y" r="5" fill="#2563eb" stroke="#fff" stroke-width="2">
+          <title>{{ c.date }}: ₹{{ c.cost | number:'1.2-2' }}</title>
+        </circle>
+        <!-- K – Month/date label on X-axis -->
+        @if (costTrendPoints.length <= 14) { <text [attr.x]="c.x" y="250" text-anchor="middle" fill="#64748b"
+          font-size="10">
+          {{ c.date.slice(5) }}
+          </text>
+          }
+          }
+
+      </svg>
+    </div>
+
+    <!-- Range Total Cost Card -->
+    <div style="background:#f8fafc; border:1.0px solid #e2e8f0; border-radius:0.75rem; padding:1.375rem 1.75rem;
+                min-width:12.5rem; text-align:center; box-shadow:0 0.25rem 0.375rem -1px rgba(0,0,0,0.05);">
+      <div style="font-size:0.6875rem; color:#64748b; margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.08em;">
+        Range Total Cost
+      </div>
+      <div style="font-size:1.75rem; color:#2563eb;">
+        ₹{{ costTrendRangeTotal | number:'1.2-2' }}
+      </div>
+      <div style="font-size:0.6875rem; color:#94a3b8; margin-top:0.375rem;">Cumulative for selected range</div>
+    </div>
+  </div>
+  }
+</div>
+
+<!-- ── PIE CHARTS ROW ──────────────────────────────────────────────── -->
+<div class="dashboard-row" style="margin-top:1.25rem; display:flex; gap:1.25rem;">
+
+  <!-- Top High-Spending Resources -->
+  <div class="chart-card" style="flex:1; position:relative;">
+    <div class="chart-header">
+      <h2 style="text-align:center; flex:1;">Top High-Spending Resources</h2>
+    </div>
+
+    @if (isLoadingAzureRange) {
+    <div class="loading-container" style="padding: 2.5rem 0;">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading resources...</span>
+    </div>
+    } @else if (topResourcesError) {
+    <div class="error-inline" style="padding:1.25rem; text-align:center;">{{ topResourcesError }}</div>
+    } @else if (!topResourcesPieSlices.length) {
+    <div style="text-align:center; padding:2.5rem; color:#6b7280;">
+      No data available for the selected date range.<br>
+      <span style="font-size:0.75rem;">Click Submit to fetch data.</span>
+    </div>
+    } @else {
+    @if (hoveredTopResource) {
+    <div style="position:absolute; top:3.5rem; right:1.25rem; background:#1e293b; color:#fff;
+                padding:0.625rem 1rem; border-radius:0.625rem; font-size:0.8125rem; z-index:20;
+                pointer-events:none; box-shadow:0 0.25rem 1rem rgba(0,0,0,0.25); min-width:10rem;">
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+        <span [style.background]="hoveredTopResource.color"
+          style="display:inline-block; width:0.625rem; height:0.625rem; border-radius:50%;"></span>
+        {{ hoveredTopResource.name }}
+      </div>
+      <div style="color:#94a3b8; font-size:0.75rem;">₹{{ hoveredTopResource.cost | number:'1.2-2' }}</div>
+      <div style="color:#64748b; font-size:0.6875rem;">{{ hoveredTopResource.percentage }}% of total</div>
+    </div>
+    }
+    <div class="pie-chart-grid" style="padding:0.75rem 0;">
+      <div style="flex:0 0 12.5rem; width:12.5rem; height:12.5rem; display:flex; align-items:center; justify-content:center;">
+        <svg viewBox="0 0 300 300" style="overflow:visible; display:block; width:100%; height:100%;">
+          @for (s of topResourcesPieSlices; track s.name) {
+          <path [attr.d]="s.path" [attr.fill]="s.color" stroke="#fff" stroke-width="2"
+            style="cursor:pointer; transition:opacity 0.15s;"
+            [style.opacity]="hoveredTopResource && hoveredTopResource.name !== s.name ? '0.55' : '1'"
+            (mouseenter)="hoveredTopResource = s" (mouseleave)="hoveredTopResource = null">
+          </path>
+          }
+        </svg>
+      </div>
+      <div style="flex:1; padding-right:0.25rem;">
+        @for (s of paginatedTopResources; track s.name) {
+        <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.625rem;
+                    padding:0.25rem 0.375rem; border-radius:0.375rem; cursor:default;" (mouseenter)="hoveredTopResource = s"
+          (mouseleave)="hoveredTopResource = null">
+          <span [style.background]="s.color"
+            style="display:inline-block; width:0.75rem; height:0.75rem; border-radius:0.1875rem; flex-shrink:0;"></span>
+          <span style="font-size:0.75rem; color:#374151; flex:1; min-width:0; word-break:break-word;">{{ s.name }}</span>
+          <span style="font-size:0.6875rem; color:#6b7280; white-space:nowrap;">
+            &#8377;{{ s.cost.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) }}
+          </span>
+          <span class="badge-blue" style="white-space:nowrap;">{{ s.percentage }}%</span>
+        </div>
+        }
+        @if (topResourcesPieSlices.length > 20) {
+        <div class="pagination-container standalone" style="padding: 0.375rem 0.625rem; border-radius: 0.5rem;">
+          <div class="pagination-tracker" style="font-size: 0.6875rem;">
+            Page <strong>{{ resourcesCurrentPage }}</strong> of <strong>{{ resourcesTotalPages }}</strong>
+          </div>
+          <div class="pagination-controls">
+            <button class="pagination-btn" style="padding: 0.1875rem 0.5rem; font-size: 0.6875rem;" (click)="resourcesCurrentPage = resourcesCurrentPage - 1" [disabled]="resourcesCurrentPage === 1">←</button>
+            <button class="pagination-btn" style="padding: 0.1875rem 0.5rem; font-size: 0.6875rem;" (click)="resourcesCurrentPage = resourcesCurrentPage + 1" [disabled]="resourcesCurrentPage >= resourcesTotalPages">→</button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </div>
+
+  <!-- Costs by Service -->
+  <div class="chart-card" style="flex:1; position:relative;">
+    <div class="chart-header">
+      <h2 style="text-align:center; flex:1;">Costs by Service</h2>
+    </div>
+
+    @if (isLoadingAzureRange) {
+    <div class="loading-container" style="padding: 2.5rem 0;">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading services...</span>
+    </div>
+    } @else if (serviceCostsError) {
+    <div class="error-inline" style="padding:1.25rem; text-align:center;">{{ serviceCostsError }}</div>
+    } @else if (!serviceCostsPieSlices.length) {
+    <div style="text-align:center; padding:2.5rem; color:#6b7280;">
+      No data available for the selected date range.<br>
+      <span style="font-size:0.75rem;">Click Submit to fetch data.</span>
+    </div>
+    } @else {
+    @if (hoveredServiceCost) {
+    <div style="position:absolute; top:3.5rem; right:1.25rem; background:#1e293b; color:#fff;
+                padding:0.625rem 1rem; border-radius:0.625rem; font-size:0.8125rem; z-index:20;
+                pointer-events:none; box-shadow:0 0.25rem 1rem rgba(0,0,0,0.25); min-width:10rem;">
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+        <span [style.background]="hoveredServiceCost.color"
+          style="display:inline-block; width:0.625rem; height:0.625rem; border-radius:50%;"></span>
+        {{ hoveredServiceCost.name }}
+      </div>
+      <div style="color:#94a3b8; font-size:0.75rem;">₹{{ hoveredServiceCost.cost | number:'1.2-2' }}</div>
+      <div style="color:#64748b; font-size:0.6875rem;">{{ hoveredServiceCost.percentage }}% of total</div>
+    </div>
+    }
+    <div class="pie-chart-grid" style="padding:0.75rem 0;">
+      <div style="flex:0 0 12.5rem; width:12.5rem; height:12.5rem; display:flex; align-items:center; justify-content:center;">
+        <svg viewBox="0 0 300 300" style="overflow:visible; display:block; width:100%; height:100%;">
+          @for (s of serviceCostsPieSlices; track s.name) {
+          <path [attr.d]="s.path" [attr.fill]="s.color" stroke="#fff" stroke-width="2"
+            style="cursor:pointer; transition:opacity 0.15s;"
+            [style.opacity]="hoveredServiceCost && hoveredServiceCost.name !== s.name ? '0.55' : '1'"
+            (mouseenter)="hoveredServiceCost = s" (mouseleave)="hoveredServiceCost = null">
+          </path>
+          }
+        </svg>
+      </div>
+      <div style="flex:1; padding-right:0.25rem;">
+        @for (s of paginatedServiceCosts; track s.name) {
+        <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.625rem;
+                    padding:0.25rem 0.375rem; border-radius:0.375rem; cursor:default;" (mouseenter)="hoveredServiceCost = s"
+          (mouseleave)="hoveredServiceCost = null">
+          <span [style.background]="s.color"
+            style="display:inline-block; width:0.75rem; height:0.75rem; border-radius:0.1875rem; flex-shrink:0;"></span>
+          <span style="font-size:0.75rem; color:#374151; flex:1; min-width:0; word-break:break-word;">{{ s.name }}</span>
+          <span style="font-size:0.6875rem; color:#6b7280; white-space:nowrap;">
+            &#8377;{{ s.cost.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) }}
+          </span>
+          <span class="badge-blue" style="white-space:nowrap;">{{ s.percentage }}%</span>
+        </div>
+        }
+        @if (serviceCostsPieSlices.length > 20) {
+        <div class="pagination-container standalone" style="padding: 0.375rem 0.625rem; border-radius: 0.5rem;">
+          <div class="pagination-tracker" style="font-size: 0.6875rem;">
+            Page <strong>{{ servicesCurrentPage }}</strong> of <strong>{{ servicesTotalPages }}</strong>
+          </div>
+          <div class="pagination-controls">
+            <button class="pagination-btn" style="padding: 0.1875rem 0.5rem; font-size: 0.6875rem;" (click)="servicesCurrentPage = servicesCurrentPage - 1" [disabled]="servicesCurrentPage === 1">←</button>
+            <button class="pagination-btn" style="padding: 0.1875rem 0.5rem; font-size: 0.6875rem;" (click)="servicesCurrentPage = servicesCurrentPage + 1" [disabled]="servicesCurrentPage >= servicesTotalPages">→</button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+</div>
+</div>
+}

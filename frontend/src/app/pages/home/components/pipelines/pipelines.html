@@ -1,0 +1,115 @@
+@if (!dashboardService.selectedProject) {
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+    <h1 style="margin:0;">Pipelines</h1>
+  </div>
+
+  @if (isLoadingProjects) {
+  <div class="loading-container">
+    <div class="spinner"></div>
+    <span class="loading-text">Loading projects...</span>
+  </div>
+  } @else {
+  <div class="cards">
+    @for (project of projects; track project.id || $index) {
+      <div class="card">
+        <h3>{{ project.name }}</h3>
+        <hr>
+        <p><strong>State:</strong> {{ project.state || 'Active' }}</p>
+        <p><strong>Visibility:</strong> {{ project.visibility || 'Private' }}</p>
+        <button (click)="selectProject(project)">View Pipelines</button>
+      </div>
+    } @empty {
+      <div class="card" style="grid-column: span 3; text-align: center;">
+        <p>No projects found.</p>
+      </div>
+    }
+  </div>
+  }
+  @if (totalProjectsCount > pageSize) {
+  <div class="pagination-container standalone">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (projectsCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(projectsCurrentPage * pageSize, totalProjectsCount) }}</strong> of <strong>{{ totalProjectsCount }}</strong> projects
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage - 1; loadProjects()" [disabled]="projectsCurrentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ projectsCurrentPage }}</strong> of <strong>{{ projectsTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage + 1; loadProjects()" [disabled]="projectsCurrentPage >= projectsTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+} @else {
+  <!-- UTC notice -->
+  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div class="nav-controls">
+        <button (click)="navigateBack()" [disabled]="!dashboardService.canGoBack()" class="nav-controls-btn btn-back" title="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <button (click)="navigateForward()" [disabled]="!dashboardService.canGoForward()" class="nav-controls-btn btn-forward" title="Forward">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+      <h1 style="margin: 0; font-size: 1.5rem; color: #1e293b;">{{ dashboardService.selectedProject.name }}</h1>
+    </div>
+  </div>
+
+  @if (pipelinesError) {
+    <div class="error-banner">Could not load pipelines: {{ pipelinesError }}</div>
+  } @else if (isLoadingPipelines) {
+    <div class="loading-container" style="padding: 2.5rem 0;">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading pipelines...</span>
+    </div>
+  } @else {
+    <div class="material-card" style="padding:0; overflow:hidden;">
+      <!-- Search filter (C) -->
+      <!-- <div style="padding:0.875rem 1.125rem; border-bottom:1.0px solid #f1f5f9;">
+        <input class="filter-search" type="text" [(ngModel)]="pipelineSearch" (ngModelChange)="currentPage = 1; loadPipelines(dashboardService.selectedProject.name)"
+          placeholder="Search pipelines by name or folder…" style="margin:0;" />
+      </div> -->
+
+      <table style="margin-top:0; border-radius:0;">
+        <tr>
+          <th>Pipeline Name</th>
+          <th>Folder</th>
+          <th>URL</th>
+        </tr>
+        @for (pipeline of pipelines; track pipeline.id || $index) {
+          <tr>
+            <td>
+              <span class="badge-purple">{{ pipeline.name }}</span>
+            </td>
+            <td style="color:#64748b; font-size:0.8125rem;">{{ pipeline.folder || '/' }}</td>
+            <td>
+              <a [href]="pipeline.url" target="_blank" style="color:#2563eb; text-decoration:none; font-size:0.8125rem;">
+                Open Pipeline
+              </a>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="3" style="text-align:center; color:#94a3b8; padding:1.875rem;">
+              No pipelines found for this project.
+            </td>
+          </tr>
+        }
+      </table>
+      @if (totalPipelinesCount > pageSize) {
+      <div class="pagination-container">
+        <div class="pagination-tracker">
+          Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(currentPage * pageSize, totalPipelinesCount) }}</strong> of <strong>{{ totalPipelinesCount }}</strong> pipelines
+        </div>
+        <div class="pagination-controls">
+          <button class="pagination-btn" (click)="currentPage = currentPage - 1; loadPipelines(dashboardService.selectedProject.name)" [disabled]="currentPage === 1">← Previous</button>
+          <span class="pagination-tracker">Page <strong>{{ currentPage }}</strong> of <strong>{{ pipelinesTotalPages }}</strong></span>
+          <button class="pagination-btn" (click)="currentPage = currentPage + 1; loadPipelines(dashboardService.selectedProject.name)" [disabled]="currentPage >= pipelinesTotalPages">Next →</button>
+        </div>
+      </div>
+      }
+    </div>
+  }
+}

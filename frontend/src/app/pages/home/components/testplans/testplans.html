@@ -1,0 +1,137 @@
+@if (!dashboardService.selectedProject) {
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+  <h1 style="margin:0;">Test Plans</h1>
+</div>
+
+@if (isLoadingProjects) {
+<div class="loading-container">
+  <div class="spinner"></div>
+  <span class="loading-text">Loading projects...</span>
+</div>
+} @else {
+<div class="cards">
+  @for (project of projects; track project.id || $index) {
+  <div class="card">
+    <h3>{{ project.name }}</h3>
+    <hr>
+    <p><strong>State:</strong> {{ project.state || 'Active' }}</p>
+    <p><strong>Visibility:</strong> {{ project.visibility || 'Private' }}</p>
+    <button (click)="selectProject(project)">View Test Plans</button>
+  </div>
+  } @empty {
+  <div class="card" style="grid-column: span 3; text-align: center;">
+    <p>No projects found.</p>
+  </div>
+  }
+</div>
+}
+@if (totalProjectsCount > pageSize) {
+<div class="pagination-container standalone">
+  <div class="pagination-tracker">
+    Showing <strong>{{ (projectsCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(projectsCurrentPage *
+      pageSize, totalProjectsCount) }}</strong> of <strong>{{ totalProjectsCount }}</strong> projects
+  </div>
+  <div class="pagination-controls">
+    <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage - 1; loadProjects()"
+      [disabled]="projectsCurrentPage === 1">← Previous</button>
+    <span class="pagination-tracker">Page <strong>{{ projectsCurrentPage }}</strong> of <strong>{{ projectsTotalPages
+        }}</strong></span>
+    <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage + 1; loadProjects()"
+      [disabled]="projectsCurrentPage >= projectsTotalPages">Next →</button>
+  </div>
+</div>
+}
+} @else {
+<!-- Header + UTC badge + project selector -->
+<div
+  style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; justify-content: space-between;">
+  <div style="display: flex; align-items: center; gap: 1rem;">
+    <div class="nav-controls">
+      <button (click)="navigateBack()" [disabled]="!dashboardService.canGoBack()" class="nav-controls-btn btn-back"
+        title="Back">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <button (click)="navigateForward()" [disabled]="!dashboardService.canGoForward()"
+        class="nav-controls-btn btn-forward" title="Forward">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+    <h1 style="margin: 0; font-size: 1.5rem; color: #1e293b;">{{ dashboardService.selectedProject.name }}</h1>
+  </div>
+</div>
+
+@if (testPlansError) {
+<div class="error-banner">Could not load test plans: {{ testPlansError }}</div>
+} @else if (isLoadingTestPlans) {
+<div class="loading-container" style="padding: 2.5rem 0;">
+  <div class="spinner"></div>
+  <span class="loading-text">Loading test plans...</span>
+</div>
+} @else {
+<div class="material-card" style="padding:0; overflow:hidden;">
+  <!-- Search filter (C) -->
+  <div style="padding:0.875rem 1.125rem; border-bottom:1.0px solid #f1f5f9;">
+    <input class="filter-search" type="text" [(ngModel)]="testPlanSearch"
+      (ngModelChange)="currentPage = 1; loadTestPlans(dashboardService.selectedProject.name)"
+      placeholder="Search by name, owner, or state…" style="margin:0;" />
+  </div>
+
+  <table style="margin-top:0; border-radius:0;">
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Owner</th>
+      <th>State</th>
+      <th>Start Date</th>
+      <th>End Date</th>
+    </tr>
+    @for (plan of testPlans; track plan.id || $index) {
+    <tr>
+      <td><span class="badge-cyan">{{ plan.id }}</span></td>
+      <td>{{ plan.name }}</td>
+      <td style="color:#64748b; font-size:0.8125rem;">{{ plan.owner }}</td>
+      <td>
+        <span [class]="plan.state === 'Active' || plan.state === 'InProgress'
+                             ? 'badge-green' : plan.state === 'Inactive' || plan.state === 'Closed'
+                             ? 'badge-red' : 'badge-amber'">
+          {{ plan.state }}
+        </span>
+      </td>
+      <td style="font-size:0.8125rem; color:#64748b;">{{ plan.startDate || 'N/A' }}</td>
+      <td style="font-size:0.8125rem; color:#64748b;">{{ plan.endDate || 'N/A' }}</td>
+    </tr>
+    } @empty {
+    <tr>
+      <td colspan="6" style="text-align:center; color:#94a3b8; padding:1.875rem;">
+        No test plans found for this project.
+      </td>
+    </tr>
+    }
+  </table>
+  @if (totalTestPlansCount > pageSize) {
+  <div class="pagination-container">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(currentPage * pageSize,
+        totalTestPlansCount) }}</strong> of <strong>{{ totalTestPlansCount }}</strong> test plans
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn"
+        (click)="currentPage = currentPage - 1; loadTestPlans(dashboardService.selectedProject.name)"
+        [disabled]="currentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ currentPage }}</strong> of <strong>{{ testPlansTotalPages
+          }}</strong></span>
+      <button class="pagination-btn"
+        (click)="currentPage = currentPage + 1; loadTestPlans(dashboardService.selectedProject.name)"
+        [disabled]="currentPage >= testPlansTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+</div>
+}
+}

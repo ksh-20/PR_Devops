@@ -1,0 +1,59 @@
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <h1 style="margin: 0;">Projects</h1>
+  <div style="position: relative; width: 300px;">
+    <input 
+      class="filter-search"
+      type="text" 
+      [value]="searchTerm"
+      (input)="onSearchChange($any($event.target).value)"
+      placeholder="Search projects..." 
+      style="margin: 0; padding-right: 2.25rem; background-color: #f8fafc; width: 39.5vh;"
+    />
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px !important; height: 16px !important; display: inline-block !important; color: #64748b; pointer-events: none;">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+  </div>
+</div>
+
+@if (projectsError) {
+<div class="error-banner">
+  Could not load projects: {{ projectsError }}
+</div>
+} @else if (isLoadingProjects) {
+<div class="loading-container">
+  <div class="spinner"></div>
+  <span class="loading-text">Loading projects...</span>
+</div>
+} @else {
+<div class="cards">
+
+  @for (project of projects; track project.id || $index) {
+  <div class="card">
+    <h3>{{ project.name }}</h3>
+    <hr>
+    <p><strong>State:</strong> {{ project.state || 'Active' }}</p>
+    <p><strong>Visibility:</strong> {{ project.visibility || 'Private' }}</p>
+    <button (click)="openProject(project)">View Project</button>
+  </div>
+  } @empty {
+  <div class="card" style="grid-column: span 3; text-align: center;">
+    <p>No projects found.</p>
+  </div>
+  }
+
+</div>
+
+@if (totalProjectsCount > pageSize) {
+<div class="pagination-container standalone">
+  <div class="pagination-tracker">
+    Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(currentPage * pageSize, totalProjectsCount) }}</strong> of <strong>{{ totalProjectsCount }}</strong> projects
+  </div>
+  <div class="pagination-controls">
+    <button class="pagination-btn" (click)="currentPage = currentPage - 1; loadProjects()" [disabled]="currentPage === 1">← Previous</button>
+    <span class="pagination-tracker">Page <strong>{{ currentPage }}</strong> of <strong>{{ totalPages }}</strong></span>
+    <button class="pagination-btn" (click)="currentPage = currentPage + 1; loadProjects()" [disabled]="currentPage >= totalPages">Next →</button>
+  </div>
+</div>
+}
+}

@@ -1,0 +1,49 @@
+<div class="sidebar" [class.sidebar-collapsed]="!dashboardService.sidebarVisible">
+
+  <div class="sidebar-menu">
+
+    @if(dashboardService.selectedModule === 'DevOps'){
+
+      <div class="menu-item" (click)="dashboardService.selectedPage='projects'">
+        Projects
+      </div>
+
+      <div class="menu-item" (click)="dashboardService.selectedPage='repos'">
+        Repositories
+      </div>
+
+      <div class="menu-item" (click)="dashboardService.selectedPage='pipelines'">
+        Pipelines
+      </div>
+
+      <div class="menu-item" (click)="dashboardService.selectedPage='boards'">
+        Boards
+      </div>
+
+      <div class="menu-item" (click)="dashboardService.selectedPage='testplans'">
+        Test Plans
+      </div>
+
+    }
+
+    @if(dashboardService.selectedModule === 'Azure'){
+
+      <div class="menu-item" (click)="dashboardService.selectedPage='azure'">
+        Azure Resources
+      </div>
+
+    }
+
+  </div>
+
+  <!-- Single toggle button — fixed, shifts left when sidebar collapses -->
+  @if (dashboardService.selectedPage !== 'home') {
+  <button class="collapse-btn"
+    (click)="dashboardService.sidebarVisible = !dashboardService.sidebarVisible"
+    [title]="dashboardService.sidebarVisible ? 'Collapse sidebar' : 'Expand sidebar'"
+    [style.left]="dashboardService.sidebarVisible ? '228px' : '8px'">
+    {{ dashboardService.sidebarVisible ? '◀' : '▶' }}
+  </button>
+  }
+
+</div>

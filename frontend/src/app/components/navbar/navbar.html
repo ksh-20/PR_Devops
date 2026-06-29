@@ -1,0 +1,54 @@
+<nav class="navbar">
+
+  <div class="navbar-left">
+    <div class="navbar-brand" (click)="dashboardService.selectedPage='home'; dashboardService.sidebarVisible=false" style="cursor: pointer;">
+      <span class="brand-name">Watcher Hub</span>
+    </div>
+
+    <div class="nav-links-left">
+      <a routerLink="/home" class="nav-link nav-link-devops"
+         [class.active]="isDevOpsActive()"
+         (click)="selectDevOps()">
+        DevOps
+      </a>
+
+      <a routerLink="/home" class="nav-link nav-link-azure"
+         [class.active]="isAzureActive()"
+         (click)="selectAzure()">
+        Azure
+      </a>
+
+      <a routerLink="/home" class="nav-link nav-link-reviewer"
+         [class.active]="isReviewerActive()"
+         (click)="selectReviewer()">
+        Reviewer
+      </a>
+    </div>
+  </div>
+
+  <div class="links">
+
+    <a routerLink="/home" class="nav-link"
+       [class.active]="isHomeActive()"
+       (click)="dashboardService.selectedPage='home'; dashboardService.sidebarVisible=false">
+      Dashboard
+    </a>
+
+    <a routerLink="/about" class="nav-link"
+       [class.active]="isAboutActive()">
+      About
+    </a>
+
+    <div class="account">
+      <span (click)="toggleLogout()">Account ▼</span>
+
+      @if(showLogout){
+      <div class="logout-menu">
+        <button (click)="logout()">Logout</button>
+      </div>
+      }
+    </div>
+
+  </div>
+
+</nav>

@@ -1,0 +1,15 @@
+*.venv/
+*venv/
+*.vscode/
+*__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+
+
+*backend/app/config.json
+*.angular/
+*backend/cache/
+*backend/app/logs/
+*.log

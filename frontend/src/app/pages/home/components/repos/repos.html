@@ -1,0 +1,149 @@
+@if (!dashboardService.selectedProject) {
+  <div class="tab-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <h1 style="margin: 0;">Repositories</h1>
+    <div style="position: relative; width: 300px;">
+      <input 
+        class="filter-search"
+        type="text" 
+        [value]="projectsSearchTerm"
+        (input)="onProjectsSearchChange($any($event.target).value)"
+        placeholder="Search projects..." 
+        style="margin: 0; padding-right: 2.25rem; background-color: #f8fafc;"
+      />
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px !important; height: 16px !important; display: inline-block !important; color: #64748b; pointer-events: none;">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
+  </div>
+
+  @if (isLoadingProjects) {
+  <div class="loading-container">
+    <div class="spinner"></div>
+    <span class="loading-text">Loading projects...</span>
+  </div>
+  } @else {
+  <div class="cards">
+    @for (project of projects; track project.id || $index) {
+    <div class="card">
+      <h3>{{ project.name }}</h3>
+      <hr>
+      <p><strong>State:</strong> {{ project.state || 'Active' }}</p>
+      <p><strong>Visibility:</strong> {{ project.visibility || 'Private' }}</p>
+      <button (click)="selectProject(project)">View Repositories</button>
+    </div>
+    } @empty {
+    <div class="card" style="grid-column: span 3; text-align: center;">
+      <p>No projects found.</p>
+    </div>
+    }
+  </div>
+  }
+  @if (totalProjectsCount > pageSize) {
+  <div class="pagination-container standalone">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (projectsCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(projectsCurrentPage * pageSize, totalProjectsCount) }}</strong> of <strong>{{ totalProjectsCount }}</strong> projects
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage - 1; loadProjects()" [disabled]="projectsCurrentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ projectsCurrentPage }}</strong> of <strong>{{ projectsTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage + 1; loadProjects()" [disabled]="projectsCurrentPage >= projectsTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+} @else {
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div class="nav-controls">
+        <button (click)="navigateBack()" [disabled]="!dashboardService.canGoBack()" class="nav-controls-btn btn-back" title="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <button (click)="navigateForward()" [disabled]="!dashboardService.canGoForward()" class="nav-controls-btn btn-forward" title="Forward">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+      <h1 style="margin: 0; font-size: 1.5rem; color: #1e293b;">{{ dashboardService.selectedProject.name }}</h1>
+    </div>
+
+    <!-- Filter by Owner -->
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <label for="owner-filter-select" style="font-size: 0.875rem; font-weight: 600; color: #475569; white-space: nowrap;">Filter by Owner:</label>
+      <input id="owner-filter-select" class="month-dropdown" style="padding: 0.375rem 0.75rem; font-size: 0.84375rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; background: white; width: 12rem;"
+        list="owner-filter-list"
+        [value]="ownerSearch || selectedOwner || ''"
+        (focus)="ownerSearch = ''; $any($event.target).value = ''"
+        (blur)="ownerSearch = selectedOwner || ''; $any($event.target).value = selectedOwner || ''"
+        (input)="ownerSearch = $any($event.target).value"
+        (change)="onOwnerChange($event)"
+        placeholder="Filter by Owner" />
+      <datalist id="owner-filter-list">
+        <option value="All">All Owners</option>
+        @for (owner of filteredUniqueOwners; track owner) {
+        <option [value]="owner">{{ owner }}</option>
+        }
+        @empty {
+          <option [value]="ownerSearch">N/A</option>
+        }
+      </datalist>
+    </div>
+  </div>
+  @if (reposError) {
+  <div class="error-banner">
+    Could not load repositories: {{ reposError }}
+  </div>
+  } @else if (isLoadingRepos) {
+  <div class="loading-container" style="padding: 2.5rem 0;">
+    <div class="spinner"></div>
+    <span class="loading-text">Loading repositories...</span>
+  </div>
+  } @else {
+  <table>
+    <tr>
+      <th>Repository Name</th>
+      <th>Project</th>
+      <th>Owner</th>
+      <th>Creation Date</th>
+      <th>Default Branch</th>
+      <th>Remote URL</th>
+    </tr>
+
+    @for (repo of repositories; track repo.id || $index) {
+    <tr>
+      <td>{{ repo.name }}</td>
+      <td>{{ repo.project }}</td>
+      <td>{{ repo.owner || 'N/A' }}</td>
+      <td>{{ repo.createdDate || 'N/A' }}</td>
+      <td>{{ repo.defaultBranch || 'N/A' }}</td>
+      <td>
+        @if (repo.remoteUrl) {
+        <a [href]="repo.remoteUrl" target="_blank"
+          style="color: #2563eb; text-decoration: none; font-weight: 500;">View Remote</a>
+        } @else {
+        N/A
+        }
+      </td>
+    </tr>
+    } @empty {
+    <tr>
+      <td colspan="6" style="text-align: center;">No repositories found.</td>
+    </tr>
+    }
+  </table>
+  @if (totalReposCount > pageSize) {
+  <div class="pagination-container">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(currentPage * pageSize, totalReposCount) }}</strong> of <strong>{{ totalReposCount }}</strong> repositories
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="currentPage = currentPage - 1; loadProjectRepositories()" [disabled]="currentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ currentPage }}</strong> of <strong>{{ reposTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="currentPage = currentPage + 1; loadProjectRepositories()" [disabled]="currentPage >= reposTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+  }
+}

@@ -1,0 +1,368 @@
+/* ── Reviewer page — scoped light-mode styles ─────────────────────── */
+
+/* ── Active PRs header ───────────────────────────────────────────────── */
+.rv-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.rv-list-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.rv-title-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.rv-pr-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 11px;
+}
+
+
+/* ── PR card list ────────────────────────────────────────────────────── */
+.rv-pr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.rv-pr-list::-webkit-scrollbar { width: 5px; }
+.rv-pr-list::-webkit-scrollbar-track { background: transparent; }
+.rv-pr-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+.rv-list-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px;
+  font-size: 13px;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #e2e8f0;
+  border-radius: 10px;
+}
+
+.rv-list-state svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.rv-list-error { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
+
+/* ── Individual PR card ──────────────────────────────────────────────── */
+.rv-pr-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+
+.rv-pr-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+.rv-pr-card--selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.15);
+}
+
+.rv-pr-card-left {
+  flex-shrink: 0;
+}
+
+.rv-pr-card-id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 28px;
+  padding: 0 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #475569;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.rv-pr-card--selected .rv-pr-card-id {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.rv-pr-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rv-pr-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+
+.rv-pr-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rv-pr-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px 2px 6px;
+  border-radius: 20px;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rv-pr-meta-chip svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+.rv-chip-repo    { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.rv-chip-project { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.rv-chip-branch  { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+.rv-chip-time    { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+
+.rv-pr-author {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+  margin-left: 2px;
+}
+
+.rv-pr-card-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.rv-pr-chevron {
+  width: 16px;
+  height: 16px;
+  color: #cbd5e1;
+  transition: color 0.2s;
+}
+
+.rv-pr-card:hover .rv-pr-chevron { color: #2563eb; }
+
+.rv-pr-active-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #2563eb;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+/* ── Info Cards Row ─────────────────────────────────────────────────── */
+.rv-info-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: #e2e8f0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.rv-info-card {
+  background: #ffffff;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rv-info-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.rv-info-value {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Code Changes Card ──────────────────────────────────────────────── */
+.rv-changes-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.rv-changes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.rv-changes-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.rv-changes-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.rv-changes-body {
+  padding: 22px 18px;
+  min-height: 150px;
+  font-size: 13.5px;
+  color: #334155;
+  line-height: 1.7;
+}
+
+/* ── AI Evaluation Output Card ─────────────────────────────────────── */
+.rv-eval-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.rv-eval-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.rv-eval-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.rv-eval-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.rv-copy-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rv-copy-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.rv-eval-body {
+  padding: 22px 18px;
+  min-height: 260px;
+  font-size: 13.5px;
+  color: #334155;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.rv-eval-placeholder {
+  color: #94a3b8;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* ── Shared animations ───────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}

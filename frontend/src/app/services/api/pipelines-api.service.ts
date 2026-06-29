@@ -1,0 +1,44 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { FrontendCacheService } from '../frontend-cache.service';
+import { API_BASE_URL } from '../../config';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class PipelinesApiService {
+  private baseUrl = `${API_BASE_URL}/api/projects`;
+
+  constructor(
+    private http: HttpClient,
+    private cache: FrontendCacheService
+  ) {}
+
+  getPipelines(projectName: string, page: number = 1, pageSize: number = 10, search?: string): Observable<any> {
+    const cacheKey = `pipelines:project:${projectName}:page:${page}:${pageSize}:search:${search || ''}`;
+    const cachedData = this.cache.get(cacheKey);
+    if (cachedData) {
+      return of(cachedData);
+    }
+    let url = `${this.baseUrl}/${projectName}/pipelines?page=${page}&page_size=${pageSize}`;
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+    return this.http.get<any>(url).pipe(
+      tap(data => this.cache.set(cacheKey, data))
+    );
+  }
+
+  getActivePipelinesCount(): Observable<any> {
+    const cacheKey = 'pipelines:activecount';
+    const cachedData = this.cache.get(cacheKey);
+    if (cachedData) {
+      return of(cachedData);
+    }
+    return this.http.get<any>(`${API_BASE_URL}/api/pipelines/active-count`).pipe(
+      tap(data => this.cache.set(cacheKey, data))
+    );
+  }
+}

@@ -1,0 +1,61 @@
+<div class="login-container">
+
+  <div class="login-card">
+
+    <h2>{{ isLogin ? 'Login' : 'Sign Up' }}</h2>
+
+    @if (errorMessage) {
+      <div class="error-message" style="color: #b91c1c; background-color: #fef2f2; border: 1.0px solid #fee2e2; padding: 0.625rem; border-radius: 0.375rem; font-size: 0.875rem; text-align: center; font-weight: 500; margin-bottom: 0.3125rem;">
+        {{ errorMessage }}
+      </div>
+    }
+
+    <form #form="ngForm" (ngSubmit)="onSubmit(form)">
+
+      <!-- NAME (ONLY FOR SIGNUP) -->
+      <input
+        *ngIf="!isLogin"
+        type="text"
+        name="name"
+        placeholder="Name"
+        ngModel
+        required
+      />
+
+      <!-- USERNAME -->
+      <input
+        type="text"
+        name="username"
+        placeholder="Username"
+        ngModel
+        required
+      />
+
+      <!-- PASSWORD -->
+      <input
+        type="password"
+        name="password"
+        placeholder="Password"
+        ngModel
+        required
+      />
+
+      <!-- BUTTON -->
+      <button type="submit">
+        {{ isLogin ? 'Login' : 'Sign Up' }}
+      </button>
+
+    </form>
+
+    <!-- TOGGLE LINK -->
+    <p class="toggle-text">
+      {{ isLogin ? "Don't have an account?" : "Already have an account?" }}
+
+      <span (click)="toggleMode()">
+        {{ isLogin ? "Sign Up" : "Login" }}
+      </span>
+    </p>
+
+  </div>
+
+</div>

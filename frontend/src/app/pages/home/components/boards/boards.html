@@ -1,0 +1,375 @@
+@if (!dashboardService.selectedProject) {
+  <div class="tab-header"
+    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h1 style="margin: 0;">Boards</h1>
+  </div>
+
+  @if (isLoadingProjects) {
+  <div class="cards" style="position: relative; overflow: hidden; border-radius: 0.75rem;">
+    <div class="sleek-progress-bar"></div>
+    @for (_ of [1, 2, 3]; track $index) {
+    <div class="card" style="min-height: 11.25rem;">
+      <div class="skeleton" style="height: 1.125rem; width: 60%; margin-bottom: 0.75rem;"></div>
+      <hr style="opacity: 0.1; margin: 0.75rem 0;">
+      <div class="skeleton" style="height: 0.875rem; width: 80%; margin-bottom: 0.5rem;"></div>
+      <div class="skeleton" style="height: 0.875rem; width: 70%; margin-bottom: 1rem;"></div>
+      <div class="skeleton" style="height: 2.25rem; width: 100%; border-radius: 0.5rem; margin-top: auto;"></div>
+    </div>
+    }
+  </div>
+  } @else {
+  <div class="cards">
+    @for (project of projects; track project.id || $index) {
+      <div class="card">
+        <h3>{{ project.name }}</h3>
+        <hr>
+        <p><strong>State:</strong> {{ project.state || 'Active' }}</p>
+        <p><strong>Visibility:</strong> {{ project.visibility || 'Private' }}</p>
+        <button (click)="selectProject(project)">View Boards</button>
+      </div>
+    } @empty {
+      <div class="card" style="grid-column: span 3; text-align: center;">
+        <p>No projects found.</p>
+      </div>
+    }
+  </div>
+  }
+  @if (totalProjectsCount > 10) {
+  <div class="pagination-container standalone">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (projectsCurrentPage - 1) * 10 + 1 }}</strong> to <strong>{{ Math.min(projectsCurrentPage * 10, totalProjectsCount) }}</strong> of <strong>{{ totalProjectsCount }}</strong> projects
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage - 1; loadProjects()" [disabled]="projectsCurrentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ projectsCurrentPage }}</strong> of <strong>{{ projectsTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="projectsCurrentPage = projectsCurrentPage + 1; loadProjects()" [disabled]="projectsCurrentPage >= projectsTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+} @else {
+  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem;">
+    <div class="nav-controls">
+      <button (click)="navigateBack()" [disabled]="!dashboardService.canGoBack()" class="nav-controls-btn btn-back" title="Back">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <button (click)="navigateForward()" [disabled]="!dashboardService.canGoForward()" class="nav-controls-btn btn-forward" title="Forward">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+    <h1 style="margin: 0; font-size: 1.5rem; color: #1e293b;">{{ dashboardService.selectedProject.name }}</h1>
+  </div>
+
+  @if (workItemsError) {
+    <div class="error-banner">Could not load work items: {{ workItemsError }}</div>
+  } @else if (isLoadingWorkItems) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading work items...</span>
+    </div>
+  } @else {
+
+
+<!-- Two-column layout: [Sprint Board] | [Recent State Changes]            -->
+
+<div style="display: grid; grid-template-columns: 1fr 23.75rem; gap: 1.25rem; align-items: start;">
+
+  <!-- ── LEFT COLUMN: Sprint Board ───────────────────────────────────── -->
+  <div>
+
+    <!-- Filter bar -->
+    <div
+      style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; padding: 0.875rem 1.125rem;
+             background: var(--bg-card, #fff); border: 1.0px solid #e2e8f0; border-radius: 0.625rem; align-items: center;">
+      <span style="font-size: 0.8125rem; color: #64748b; white-space: nowrap;">Filter by:</span>
+
+      <!-- Sprint -->
+      <input class="month-dropdown" style="width: 8rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
+        list="sprint-filter-list"
+        [value]="sprintSearch || boardFilterSprint || ''"
+        (focus)="sprintSearch = ''; $any($event.target).value = ''"
+        (blur)="sprintSearch = boardFilterSprint || ''; $any($event.target).value = boardFilterSprint || ''"
+        (input)="sprintSearch = $any($event.target).value"
+        (change)="onSprintChange($event)"
+        placeholder="All Sprints" />
+      <datalist id="sprint-filter-list">
+        @for (s of filteredSprints; track s) {
+        <option [value]="s">{{ s }}</option>
+        }
+        @empty {
+          <option [value]="sprintSearch">N/A</option>
+        }
+      </datalist>
+
+      <!-- Type -->
+      <input class="month-dropdown" style="width: 8rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
+        list="type-filter-list"
+        [value]="typeSearch || boardFilterType || ''"
+        (focus)="typeSearch = ''; $any($event.target).value = ''"
+        (blur)="typeSearch = boardFilterType || ''; $any($event.target).value = boardFilterType || ''"
+        (input)="typeSearch = $any($event.target).value"
+        (change)="onTypeChange($event)"
+        placeholder="All Types" />
+      <datalist id="type-filter-list">
+        @for (t of filteredTypes; track t) {
+        <option [value]="t">{{ t }}</option>
+        }
+        @empty {
+          <option [value]="typeSearch">N/A</option>
+        }
+      </datalist>
+
+      <!-- State -->
+      <input class="month-dropdown" style="width: 8rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
+        list="state-filter-list"
+        [value]="stateSearch || boardFilterState || ''"
+        (focus)="stateSearch = ''; $any($event.target).value = ''"
+        (blur)="stateSearch = boardFilterState || ''; $any($event.target).value = boardFilterState || ''"
+        (input)="stateSearch = $any($event.target).value"
+        (change)="onStateChange($event)"
+        placeholder="All States" />
+      <datalist id="state-filter-list">
+        @for (s of filteredStates; track s) {
+        <option [value]="s">{{ s }}</option>
+        }
+        @empty {
+          <option [value]="stateSearch">N/A</option>
+        }
+      </datalist>
+
+      <!-- Assigned To -->
+      <input class="month-dropdown" style="width: 10rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
+        list="assigned-filter-list"
+        [value]="assignedSearch || boardFilterAssigned || ''"
+        (focus)="assignedSearch = ''; $any($event.target).value = ''"
+        (blur)="assignedSearch = boardFilterAssigned || ''; $any($event.target).value = boardFilterAssigned || ''"
+        (input)="assignedSearch = $any($event.target).value"
+        (change)="onAssignedChange($event)"
+        placeholder="All Assignees" />
+      <datalist id="assigned-filter-list">
+        @for (a of filteredAssignees; track a) {
+        <option [value]="a">{{ a }}</option>
+        }
+        @empty {
+          <option [value]="assignedSearch">N/A</option>
+        }
+      </datalist>
+
+      <!-- Clear -->
+      @if (boardFilterSprint || boardFilterType || boardFilterState || boardFilterAssigned) {
+      <button
+        (click)="clearFilters()"
+        style="padding: 0.3125rem 0.875rem; font-size: 0.75rem; background: #fee2e2;
+               color: #b91c1c; border: 1.0px solid #fca5a5; border-radius: 0.375rem; cursor: pointer;">
+        ✕ Clear Filters
+      </button>
+      <span style="font-size: 0.75rem; color: #64748b; margin-left: 0.25rem;">
+        {{ totalWorkItemsCount }} matching items
+      </span>
+      }
+    </div>
+
+    <!-- Sprint groups -->
+    @if (groupedWorkItems.length === 0) {
+    <div style="text-align: center; padding: 2.5rem; background: var(--bg-card); border-radius: 0.5rem;">
+      <p style="color: #6b7280; font-size: 0.9375rem;">No work items match the current filters.</p>
+    </div>
+    }
+
+    @for (group of groupedWorkItems; track group.sprint) {
+    <div style="margin-bottom: 1.25rem; border: 1.0px solid #e2e8f0; border-radius: 0.625rem; overflow: hidden;">
+
+      <!-- Sprint header -->
+      <div (click)="toggleSprintCollapse(group.sprint)"
+        style="display: flex; align-items: center; gap: 0.625rem; padding: 0.75rem 1.125rem;
+               background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%); cursor: pointer; user-select: none;">
+        <span style="color: #fff; font-size: 0.875rem;">{{ isSprintCollapsed(group.sprint) ? '▶' : '▼' }}</span>
+        <span style="color: #fff; font-size: 0.9375rem;">{{ group.sprint }}</span>
+        <span
+          style="margin-left: auto; background: rgba(255,255,255,0.25); color: #fff;
+                 font-size: 0.75rem; border-radius: 0.75rem; padding: 0.125rem 0.625rem;">
+          {{ group.items.length }} item{{ group.items.length !== 1 ? 's' : '' }}
+        </span>
+      </div>
+
+      <!-- Items table (collapsible) -->
+      @if (!isSprintCollapsed(group.sprint)) {
+      <table style="font-size: 0.8125rem; border-radius: 0;">
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Type</th>
+          <th>State</th>
+          <th>Assigned To</th>
+        </tr>
+        @for (item of group.items; track item.id || $index) {
+        <tr>
+          <td style="color: #6b7280;">{{ item.id }}</td>
+          <td>{{ item.title }}</td>
+          <td>
+            <span
+              style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.6875rem;
+                  background: {{ item.type === 'Bug' ? '#fee2e2' : item.type === 'Task' ? '#dbeafe' : item.type === 'User Story' ? '#dcfce7' : '#f1f5f9' }};
+                  color:      {{ item.type === 'Bug' ? '#b91c1c' : item.type === 'Task' ? '#1d4ed8' : item.type === 'User Story' ? '#15803d' : '#475569' }};">
+              {{ item.type || 'N/A' }}
+            </span>
+          </td>
+          <td>
+            <span
+              style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.6875rem;
+                  background: {{ item.state === 'Done' || item.state === 'Closed' ? '#dcfce7' : item.state === 'Active' || item.state === 'In Progress' ? '#dbeafe' : '#f1f5f9' }};
+                  color:      {{ item.state === 'Done' || item.state === 'Closed' ? '#15803d' : item.state === 'Active' || item.state === 'In Progress' ? '#1d4ed8' : '#475569' }};">
+              {{ item.state }}
+            </span>
+          </td>
+          <td>{{ item.assignedTo || 'Unassigned' }}</td>
+        </tr>
+        }
+      </table>
+      }
+
+    </div>
+    }
+    @if (totalWorkItemsCount > pageSize) {
+    <div class="pagination-container standalone" style="margin-bottom: 1.25rem;">
+      <div class="pagination-tracker">
+        Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(currentPage * pageSize, totalWorkItemsCount) }}</strong> of <strong>{{ totalWorkItemsCount }}</strong> items
+      </div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" (click)="currentPage = currentPage - 1; loadWorkItems(dashboardService.selectedProject.name)" [disabled]="currentPage === 1">← Previous</button>
+        <span class="pagination-tracker">Page <strong>{{ currentPage }}</strong> of <strong>{{ workItemsTotalPages }}</strong></span>
+        <button class="pagination-btn" (click)="currentPage = currentPage + 1; loadWorkItems(dashboardService.selectedProject.name)" [disabled]="currentPage >= workItemsTotalPages">Next →</button>
+      </div>
+    </div>
+    }
+  </div>
+
+  <!-- ── RIGHT COLUMN: Recent State Changes ──────────────────────────── -->
+  <div style="position: sticky; top: 1.25rem;">
+    <div style="background: #fff; border: 1.0px solid #e2e8f0; border-radius: 0.75rem;
+                box-shadow: 0 0.25rem 1rem rgba(0,0,0,0.06); overflow: hidden;">
+
+      <!-- Panel header -->
+      <div style="padding: 1rem 1.25rem; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+                  display: flex; align-items: center; gap: 0.625rem;">
+        <span style="font-size: 1.125rem;"></span>
+        <div>
+          <div style="color: #fff; font-size: 0.875rem; letter-spacing: 0.3px;">
+            Recent State Changes
+          </div>
+          <div style="color: rgba(255,255,255,0.75); font-size: 0.6875rem; margin-top: 0.125rem;">
+            Last 30 days · up to 25 items
+          </div>
+        </div>
+        @if (isLoadingChanges) {
+        <div style="margin-left: auto; width: 1.125rem; height: 1.125rem; border: 0.125rem solid rgba(255,255,255,0.4);
+                    border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite;">
+        </div>
+        }
+      </div>
+
+      <!-- Body -->
+      <div style="max-height: 37.5rem; overflow-y: auto;">
+
+        @if (changesError) {
+        <div style="padding: 1.25rem; text-align: center; color: #b91c1c; font-size: 0.8125rem;">
+          {{ changesError }}
+        </div>
+        } @else if (!isLoadingChanges && recentChanges.length === 0) {
+        <div style="padding: 2rem 1.25rem; text-align: center; color: #94a3b8; font-size: 0.8125rem;">
+          No state changes found in the last 30 days.
+        </div>
+        } @else {
+
+        <!-- Timeline entries -->
+        @for (change of paginatedRecentChanges; track change.id) {
+        <div style="display: flex; gap: 0.75rem; padding: 0.875rem 1.125rem; border-bottom: 1.0px solid #f1f5f9;
+                    transition: background 0.15s ease;"
+          onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+
+          <!-- Timeline dot + line -->
+          <div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;">
+            <div style="width: 0.625rem; height: 0.625rem; border-radius: 50%; background: #3b82f6;
+                        border: 0.125rem solid #bfdbfe; margin-top: 0.25rem;"></div>
+            <div style="width: 1.0px; flex: 1; background: #e2e8f0; margin-top: 0.25rem;"></div>
+          </div>
+
+          <!-- Content -->
+          <div style="flex: 1; min-width: 0;">
+
+            <!-- ID + Title -->
+            <div style="display: flex; align-items: flex-start; gap: 0.375rem; margin-bottom: 0.375rem;">
+              <span style="font-size: 0.6875rem; color: #94a3b8; white-space: nowrap;
+                           padding-top: 1.0px;">#{{ change.id }}</span>
+              <span style="font-size: 0.75rem; color: #1e293b; line-height: 1.4;
+                           overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2;
+                           -webkit-box-orient: vertical;">
+                {{ change.title }}
+              </span>
+            </div>
+
+            <!-- State transition arrow -->
+            <div style="display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.3125rem;">
+              @if (change.prev_state) {
+              <span [style]="'display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; background:' + stateColor(change.prev_state).bg + '; color:' + stateColor(change.prev_state).fg">
+                {{ change.prev_state }}
+              </span>
+              <span style="color: #94a3b8; font-size: 0.75rem;">→</span>
+              }
+              <span [style]="'display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; background:' + stateColor(change.new_state).bg + '; color:' + stateColor(change.new_state).fg">
+                {{ change.new_state }}
+              </span>
+              @if (!change.prev_state) {
+              <span style="font-size: 0.625rem; color: #94a3b8; font-style: italic;">(no prior state)</span>
+              }
+            </div>
+
+            <!-- Meta row: type + assignee + time -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              @if (change.type) {
+              <span style="font-size: 0.625rem; color: #64748b; background: #f1f5f9;
+                           padding: 1.0px 0.4375rem; border-radius: 0.625rem;">
+                {{ change.type }}
+              </span>
+              }
+              @if (change.assigned_to) {
+              <span style="font-size: 0.625rem; color: #64748b;">
+                {{ change.assigned_to }}
+              </span>
+              }
+              <span style="font-size: 0.625rem; color: #94a3b8; margin-left: auto; white-space: nowrap;">
+                {{ formatChangedAt(change.changed_at) }}
+              </span>
+            </div>
+          </div>
+
+        </div>
+        }
+        @if (totalChangesCount > 10) {
+        <div class="pagination-container standalone" style="margin: 0.625rem; border-top: 1.0px solid #e2e8f0; border-radius: 0.5rem;">
+          <div class="pagination-tracker">
+            Showing <strong>{{ (changesCurrentPage - 1) * 10 + 1 }}</strong> to <strong>{{ Math.min(changesCurrentPage * 10, totalChangesCount) }}</strong> of <strong>{{ totalChangesCount }}</strong> changes
+          </div>
+          <div class="pagination-controls">
+            <button class="pagination-btn" (click)="changesCurrentPage = changesCurrentPage - 1; loadRecentChanges(dashboardService.selectedProject.name)" [disabled]="changesCurrentPage === 1">← Prev</button>
+            <span class="pagination-tracker">Page <strong>{{ changesCurrentPage }}</strong> of <strong>{{ changesTotalPages }}</strong></span>
+            <button class="pagination-btn" (click)="changesCurrentPage = changesCurrentPage + 1; loadRecentChanges(dashboardService.selectedProject.name)" [disabled]="changesCurrentPage >= changesTotalPages">Next →</button>
+          </div>
+        </div>
+        }
+
+        }
+      </div>
+
+    </div>
+  </div>
+  <!-- end right column -->
+
+</div>
+<!-- end two-column grid -->
+
+}
+}

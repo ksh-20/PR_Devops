@@ -1,0 +1,170 @@
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- REVIEWER PAGE — automated, no manual selection required              -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- ── Active PRs Header ─────────────────────────────────────────────── -->
+<div class="rv-list-header">
+  <div class="rv-list-title">
+    Active Pull Requests
+    @if (activePRs.length > 0) {
+      <span class="rv-pr-count">{{ activePRs.length }}</span>
+    }
+    @if (isLoadingPRs) {
+      <span class="rv-title-spinner"></span>
+    }
+  </div>
+</div>
+
+
+<!-- ── PR Cards List ──────────────────────────────────────────────────── -->
+<div class="rv-pr-list">
+  @if (isLoadingPRs) {
+    <div class="rv-list-state">
+      <div class="spinner" style="width:22px;height:22px;border-width:3px;"></div>
+      <span>Fetching active pull requests across all repositories…</span>
+    </div>
+  } @else if (prsError) {
+    <div class="rv-list-state rv-list-error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {{ prsError }}
+    </div>
+  } @else if (activePRs.length === 0) {
+    <div class="rv-list-state">
+      <div class="spinner" style="width:22px;height:22px;border-width:3px;"></div>
+      <span>Waiting for active pull requests...</span>
+    </div>
+  } @else {
+    @for (pr of activePRs; track (pr.repo_id + ':' + (pr.pullRequestId ?? pr.id))) {
+      <div class="rv-pr-card" [class.rv-pr-card--selected]="isSelected(pr)" (click)="selectPR(pr)">
+        <div class="rv-pr-card-left">
+          <div class="rv-pr-card-id">#{{ pr.pullRequestId ?? pr.id }}</div>
+        </div>
+        <div class="rv-pr-card-body">
+          <div class="rv-pr-card-title">{{ pr.title }}</div>
+          <div class="rv-pr-card-meta">
+            <span class="rv-pr-meta-chip rv-chip-repo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+              {{ pr.repo_name }}
+            </span>
+            <span class="rv-pr-meta-chip rv-chip-project">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              {{ pr.project_name }}
+            </span>
+            @if (pr.sourceRefName || pr.sourceBranch) {
+              <span class="rv-pr-meta-chip rv-chip-branch">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+                {{ (pr.sourceRefName || pr.sourceBranch).replace('refs/heads/', '') }}
+              </span>
+            }
+            <span class="rv-pr-meta-chip rv-chip-time">{{ prAge(pr) }}</span>
+            <span class="rv-pr-author">{{ prAuthor(pr) }}</span>
+          </div>
+        </div>
+        <div class="rv-pr-card-right">
+          @if (isSelected(pr) && isLoadingReview) {
+            <div class="spinner" style="width:15px;height:15px;border-width:2px;"></div>
+          } @else if (isSelected(pr)) {
+            <span class="rv-pr-active-badge">Viewing</span>
+          } @else {
+            <svg class="rv-pr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- ── Info Cards Row ─────────────────────────────────────────────────── -->
+@if (selectedPR) {
+  <div class="rv-info-row">
+    <div class="rv-info-card">
+      <div class="rv-info-label">PROJECT</div>
+      <div class="rv-info-value">{{ selectedPR.project_name }}</div>
+    </div>
+    <div class="rv-info-card">
+      <div class="rv-info-label">REPOSITORY</div>
+      <div class="rv-info-value">{{ selectedPR.repo_name }}</div>
+    </div>
+    <div class="rv-info-card">
+      <div class="rv-info-label">PULL REQUEST</div>
+      <div class="rv-info-value">#{{ selectedPR.pullRequestId ?? selectedPR.id }} — {{ selectedPR.title }}</div>
+    </div>
+    <div class="rv-info-card">
+      <div class="rv-info-label">SOURCE — TARGET</div>
+      <div class="rv-info-value">{{ sourceTarget || '—' }}</div>
+    </div>
+    <div class="rv-info-card">
+      <div class="rv-info-label">CREATED</div>
+      <div class="rv-info-value">{{ prCreatedAt || '—' }}</div>
+    </div>
+  </div>
+}
+
+<!-- ── Code Changes ───────────────────────────────────────────────────── -->
+<div class="rv-changes-card">
+  <div class="rv-changes-header">
+    <div class="rv-changes-title">
+      <svg class="rv-changes-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 18L22 12L16 6"></path>
+        <path d="M8 6L2 12L8 18"></path>
+      </svg>
+      Code Changes
+    </div>
+  </div>
+  <div class="rv-changes-body">
+    @if (isLoadingReview) {
+      <div style="display: flex; align-items: center; gap: 8px; color: #64748b;">
+        <div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>
+        <span>Loading code changes and AI review…</span>
+      </div>
+    } @else if (diffError) {
+      <span class="rv-eval-placeholder" style="color:#dc2626;">{{ diffError }}</span>
+    } @else if (diffFiles.length === 0) {
+      <span class="rv-eval-placeholder">Waiting for PR to view code changes.</span>
+    } @else {
+      @for (file of diffFiles; track file.path) {
+        <div style="margin-bottom: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+          <div style="background: #f8fafc; padding: 8px 14px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-family: monospace; word-break: break-all; margin-right: 12px;">{{ file.path }}</span>
+            <span class="badge-blue" style="text-transform: uppercase; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">{{ file.change_type }}</span>
+          </div>
+          <pre style="margin: 0; padding: 14px; background: #fafcff; font-family: 'Courier New', Courier, monospace; font-size: 12.5px; overflow-x: auto; white-space: pre-wrap; color: #334155; line-height: 1.6; border-radius: 0 0 8px 8px;">{{ file.diff }}</pre>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+<!-- ── AI Evaluation Output ───────────────────────────────────────────── -->
+<div class="rv-eval-card">
+  <div class="rv-eval-header">
+    <div class="rv-eval-title">
+      <svg class="rv-eval-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
+      AI Evaluation Output
+    </div>
+    <!-- <button class="rv-copy-btn" (click)="copyOutput()">Copy</button> -->
+  </div>
+  <div class="rv-eval-body" id="rv-eval-content">
+    @if (isLoadingReview) {
+      <div style="display: flex; align-items: center; gap: 8px; color: #64748b;">
+        <div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>
+        <span>Loading code changes and AI review…</span>
+      </div>
+    } @else if (reviewError) {
+      <span class="rv-eval-placeholder" style="color:#dc2626;">{{ reviewError }}</span>
+    } @else if (!reviewTriggered) {
+      <span class="rv-eval-placeholder">Waiting for PR to view AI evaluation output.</span>
+    } @else {
+      {{ aiReviewContent }}
+    }
+  </div>
+</div>

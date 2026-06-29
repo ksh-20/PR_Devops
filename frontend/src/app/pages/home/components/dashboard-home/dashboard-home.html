@@ -1,0 +1,455 @@
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE HEADER                                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div style="text-align:center; margin-bottom:1.25rem;">
+  <h1 class="page-title-centered" style="margin:0; font-size:2.25rem; color:#1e293b; font-weight:700;">
+    Watcher Analytics Dashboard
+  </h1>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- TOP METRIC CARDS                                                        -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div class="cards" style="margin-top:1rem;">
+
+  <!-- Total Repositories -->
+  <div class="card">
+    <h3>Repositories</h3>
+    @if (isLoadingRepos) {
+    <div class="skeleton skeleton-value"></div>
+    } @else if (reposError) {
+    <div style="color:#dc2626; font-size:0.8125rem;">{{ reposError }}</div>
+    } @else {
+    <h2>{{ repositories.length }}</h2>
+    }
+  </div>
+
+  <!-- Total Projects -->
+  <div class="card">
+    <h3>Projects</h3>
+    @if (isLoadingProjects) {
+    <div class="skeleton skeleton-value"></div>
+    } @else if (projectsError) {
+    <div style="color:#dc2626; font-size:0.8125rem;">{{ projectsError }}</div>
+    } @else {
+    <h2>{{ totalProjectsCount }}</h2>
+    }
+  </div>
+
+  <!-- Active Pipelines -->
+  <div class="card">
+    <h3>Pipelines</h3>
+    @if (activePipelinesError) {
+    <div style="color:#dc2626; font-size:0.8125rem;">{{ activePipelinesError }}</div>
+    } @else {
+    <h2>{{ activePipelinesCount }}</h2>
+    }
+  </div>
+
+  <!-- Total Combined Cost -->
+  <div class="card">
+    <h3>Cloud Cost (YTD)</h3>
+    @if (isLoadingCombinedCost) {
+    <div class="skeleton skeleton-value"></div>
+    } @else if (combinedCostError) {
+    <div style="color:#dc2626; font-size:0.8125rem;">{{ combinedCostError }}</div>
+    } @else {
+    <h2>₹{{ combinedYearlyCost | number:'1.2-2' }}</h2>
+    }
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- RELOCATED AZURE PROJECT DROPDOWN & PROJECT METADATA                    -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div
+  style="background:white; border:1.0px solid #e2e8f0; padding:1rem 1.5rem; border-radius:0.75rem;
+            box-shadow:0 0.125rem 0.5rem rgba(0,0,0,0.04); margin-top:1.25rem; display:flex; align-items:center; gap:0.75rem;">
+  <span style="font-size:0.875rem; font-weight:600; color:#334155;">Project:</span>
+  <input id="home-azure-proj-select" class="month-dropdown"
+    style="width:15rem; font-size:0.84375rem; padding:0.5rem 0.75rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
+    list="home-projects-list"
+    [value]="homeProjSearch || selectedHomeAzureProject || ''"
+    (focus)="homeProjSearch = ''; $any($event.target).value = ''"
+    (blur)="homeProjSearch = selectedHomeAzureProject || ''; $any($event.target).value = selectedHomeAzureProject || ''"
+    (input)="homeProjSearch = $any($event.target).value"
+    (change)="onHomeAzureProjectChange($event)"
+    placeholder="Select Project" />
+  <datalist id="home-projects-list">
+    @for (proj of filteredHomeProjects; track proj) {
+    <option [value]="proj">{{ proj }}</option>
+    }
+    @empty {
+      <option [value]="homeProjSearch">N/A</option>
+    }
+  </datalist>
+</div>
+
+<!-- PROJECT STATUS BADGES — shown when a project is selected -->
+@if (selectedHomeAzureProject) {
+<div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; margin:0.75rem 0 0 0; padding:0.75rem 1.25rem;
+            background:#f8fafc; border:1.0px solid #e2e8f0; border-radius:0.625rem; flex-wrap:wrap;">
+  <span style="font-size:1.125rem; color:#64748b;">
+    <strong style="font-size:1.375rem; color:#1e293b; font-weight:700;">{{ selectedHomeAzureProject }}</strong>
+  </span>
+</div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- PIE CHART + COST TREND ROW                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div class="dashboard-row" style="margin-top:1.25rem;">
+
+  <!-- PIE CHART CARD (legend filter) -->
+  <div class="chart-card">
+    @if (!selectedHomeAzureProject) {
+    <div class="chart-header">
+      <h2 style="text-align:center; flex:1;">Repository Distribution</h2>
+      <button class="details-btn" (click)="openProjectDistributionDetailsModal()"
+        [disabled]="!!(projectsError || reposError)">
+        View Details
+      </button>
+    </div>
+
+    @if (isLoadingProjects || isLoadingRepos) {
+    <div class="loading-container" style="padding: 1.25rem 0;">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading repository distribution...</span>
+    </div>
+    } @else if (projectsError || reposError) {
+    <div style="color:#dc2626; padding:1rem; font-size:0.8125rem;">
+      Could not display distribution: {{ projectsError || reposError }}
+    </div>
+    } @else {
+    <div class="pie-chart-grid" style="position:relative; padding:0.625rem 0;">
+      <div
+        style="position:relative; width: 12.5rem; height: 12.5rem; flex-shrink: 0; display: flex; justify-content: center; align-items: center;">
+        <svg viewBox="0 0 220 220"
+          style="overflow:visible; display:block; width:100%; height:100%; filter: drop-shadow(0.0px 0.25rem 0.5rem rgba(0,0,0,0.12));">
+          @for (s of paginatedPieSlices; track s.name) {
+          <path [attr.d]="s.path" [attr.fill]="s.color" stroke="#fff" stroke-width="1.5"
+            style="cursor:pointer; transition:all 0.15s ease;"
+            [style.opacity]="hoveredProject && hoveredProject.name !== s.name ? '0.6' : '1'"
+            [style.transform]="hoveredProject?.name === s.name ? 'scale(1.03)' : 'none'"
+            [style.transform-origin]="'110px 110px'" (mouseenter)="hoveredProject = s"
+            (mouseleave)="hoveredProject = null">
+          </path>
+          }
+        </svg>
+
+        @if (hoveredProject) {
+        <div
+          style="position:absolute; bottom: -8px; left: 50%; transform: translateX(-50%); background:#1e293b; color:#fff;
+                      padding:0.375rem 0.625rem; border-radius:0.375rem; font-size:0.6875rem; z-index:20;
+                      pointer-events:none; box-shadow:0 0.25rem 0.75rem rgba(0,0,0,0.15); text-align: center; white-space: nowrap;">
+          <div style="display:flex; align-items:center; gap:0.375rem; font-weight: 600;">
+            <span [style.background]="hoveredProject.color"
+              style="display:inline-block; width:0.375rem; height:0.375rem; border-radius:50%;"></span>
+            {{ hoveredProject.name }}: {{ hoveredProject.count }}
+          </div>
+        </div>
+        }
+      </div>
+
+      <div class="pie-legend"
+        style="flex:1; min-width:0; display: flex; flex-direction: column; gap: 0.5rem; font-size:0.84375rem;">
+        <!-- Legend search box -->
+        <!-- <input class="filter-search" type="text" placeholder="Search projects…" [(ngModel)]="pieSearchQuery"
+            style="margin-bottom:0.625rem;" /> -->
+
+        @for (item of filteredProjectDistribution; track item.name) {
+        <div
+          style="cursor:pointer; display:flex; align-items:center; padding:0.25rem 0.375rem; border-radius:0.375rem; transition:all 0.2s; white-space: nowrap;"
+          [style.fontWeight]="hoveredProject?.name === item.name ? '700' : '500'"
+          [style.background]="hoveredProject?.name === item.name ? 'rgba(0,0,0,0.04)' : 'transparent'"
+          (mouseenter)="hoveredProject = item" (mouseleave)="hoveredProject = null">
+          <span class="dot" [style.backgroundColor]="item.color"
+            style="width:0.75rem; height:0.75rem; min-width:0.75rem; min-height:0.75rem; margin-right:0.5rem; border-radius:50%; flex-shrink:0;"></span>
+          {{ item.name }} ({{ item.count }})
+        </div>
+        }
+
+        <!-- Pie chart pagination -->
+        @if (pieTotalPages > 1) {
+        <div class="pagination-container standalone" style="padding: 0.375rem 0.625rem; border-radius: 0.5rem; margin-top: 0.5rem;">
+          <div class="pagination-tracker" style="font-size: 0.6875rem;">
+            Page <strong>{{ pieCurrentPage }}</strong> of <strong>{{ pieTotalPages }}</strong>
+          </div>
+          <div class="pagination-controls">
+            <button class="pagination-btn" style="padding: 0.1875rem 0.5rem; font-size: 0.6875rem;"
+              (click)="pieCurrentPage = pieCurrentPage - 1" [disabled]="pieCurrentPage === 1">&#8592;</button>
+            <button class="pagination-btn" style="padding: 0.1875rem 0.5rem; font-size: 0.6875rem;"
+              (click)="pieCurrentPage = pieCurrentPage + 1" [disabled]="pieCurrentPage >= pieTotalPages">&#8594;</button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+    } @else {
+    <div class="chart-header">
+      <h2 style="text-align:center; flex:1;">Work Item Status Distribution</h2>
+    </div>
+
+    @if (isLoadingWorkItemStates) {
+    <div class="loading-container" style="padding: 1.25rem 0;">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading work item states...</span>
+    </div>
+    } @else if (workItemStatesError) {
+    <div style="color:gray; padding:1rem; font-size:0.8125rem; text-align:center;">
+      {{ workItemStatesError }}
+    </div>
+    } @else if (workItemStates.length === 0) {
+    <div
+      style="height: 14rem; display: flex; align-items: center; justify-content: center; color: gray; font-size: 14px;">
+      No work items found
+    </div>
+    } @else {
+    <div
+      style="display:flex; flex-direction:column; align-items:center; gap:1rem; padding:0.625rem 0; width:100%; max-width:18.75rem; margin:0 auto;">
+      <div
+        style="width:9.375rem; height:9.375rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <svg viewBox="0 15 220 220" style="overflow:visible; display:block; width:150%; height:150%;">
+          @for (s of workItemPieSlices; track s.state) {
+          <path [attr.d]="s.path" [attr.fill]="s.color" stroke="#fff" stroke-width="2"
+            style="cursor:pointer; transition:all 0.15s ease;"
+            [style.opacity]="hoveredWorkItemState && hoveredWorkItemState !== s.state ? '0.55' : '1'"
+            [style.transform]="hoveredWorkItemState === s.state ? 'scale(1.02)' : 'none'"
+            [style.transform-origin]="'110px 110px'" (mouseenter)="hoveredWorkItemState = s.state"
+            (mouseleave)="hoveredWorkItemState = null">
+          </path>
+          }
+        </svg>
+      </div>
+
+      <div style="width:100%; display:flex; flex-direction:column; gap:0.375rem;">
+        @for (item of workItemPieSlices; track item.state) {
+        <div
+          style="display:flex; align-items:center; justify-content:space-between; padding:0.375rem 0.625rem; border-radius:0.5rem; cursor:default; transition:all 0.2s;"
+          [style.fontWeight]="hoveredWorkItemState === item.state ? '700' : '500'"
+          [style.background]="hoveredWorkItemState === item.state ? 'rgba(0, 0, 0, 0.04)' : 'transparent'"
+          (mouseenter)="hoveredWorkItemState = item.state" (mouseleave)="hoveredWorkItemState = null">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span class="dot" [style.backgroundColor]="item.color" style="margin-right:0; flex-shrink:0;"></span>
+            <span style="color:#374151; font-size:0.8125rem;">{{ item.state }}</span>
+          </div>
+          <span style="color:#64748b; font-size:0.75rem; font-weight:600; white-space:nowrap;">{{ item.count }} ({{
+            item.percentage }}%)</span>
+        </div>
+        }
+      </div>
+    </div>
+    }
+    }
+  </div>
+
+  <!-- CLOUD COST TREND CARD (MULTI-LINE) -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <h2 style="text-align:center; flex:1;">Cloud Cost Trend</h2>
+    </div>
+
+    <!-- Chart legend -->
+    @if (visibleTrends.length > 0) {
+    <div style="display:flex; justify-content:center; gap:20px; font-size:12px; margin-bottom:12px;">
+      @for (trend of visibleTrends; track trend.projectName) {
+      <div>
+        <span [style.background]="trend.color"
+          style="display:inline-block; width:0.75rem; height:0.75rem; margin-right:0.375rem; border-radius:0.125rem;"></span>
+        {{ trend.projectName }}
+      </div>
+      }
+    </div>
+    }
+
+    @if (isLoadingMultiTrend) {
+    <div class="loading-container" style="padding: 2.5rem 0;">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading cost trend...</span>
+    </div>
+    } @else if (multiTrendError) {
+    <div style="color:#dc2626; padding:1rem; font-size:0.8125rem;">{{ multiTrendError }}</div>
+    } @else if (selectedHomeAzureProject && visibleTrends.length === 0) {
+    <div
+      style="height: 14rem; display: flex; align-items: center; justify-content: center; color: gray; font-size: 14px;">
+      Project not deployed to Azure.
+    </div>
+    } @else {
+    <div class="graph-container" style="width:100%; max-width:47.5rem; margin:0 auto;">
+      <svg viewBox="0 0 620 305" style="overflow:visible; display:block; width:100%; height:auto;">
+
+        <!-- Area fills (faint overlapping fills) -->
+        @for (trend of visibleTrends; track trend.projectName) {
+        @if (trend.polylinePoints) {
+        <polygon [attr.points]="trend.polylinePoints + ' 585,255 55,255'"
+          [attr.fill]="trend.projectName === 'AiDocFlo' ? 'rgba(37,99,235,0.03)' : trend.projectName === 'TimeFlow' ? 'rgba(22,163,74,0.03)' : 'rgba(245,158,11,0.03)'">
+        </polygon>
+        }
+        }
+
+        <!-- Y-axis grid + ₹ labels -->
+        @for (lbl of yAxisLabels; track $index) {
+        <line x1="55" [attr.y1]="30 + ($index * 45)" x2="585" [attr.y2]="30 + ($index * 45)" stroke="#e2e8f0"
+          stroke-width="1"></line>
+        <text x="50" [attr.y]="34 + ($index * 45)" text-anchor="end" fill="#64748b" font-size="11">
+          ₹{{ lbl }}
+        </text>
+        }
+
+        <!-- Multi-line trends -->
+        @for (trend of visibleTrends; track trend.projectName) {
+        <!-- Polyline -->
+        @if (trend.polylinePoints) {
+        <polyline [attr.points]="trend.polylinePoints" fill="none" [attr.stroke]="trend.color" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"></polyline>
+        }
+
+        <!-- Data points -->
+        @for (c of trend.circlePoints; track c.month) {
+        <circle [attr.cx]="c.cx" [attr.cy]="c.cy" r="5" [attr.fill]="trend.color" stroke="#fff" stroke-width="2">
+          <title>{{ trend.projectName }} - {{ c.month }}: ₹{{ c.cost | number:'1.0-0' }}</title>
+        </circle>
+        }
+        }
+
+        <!-- X-axis month labels (using the first trend's timeline) -->
+        @for (c of projectTrends[0]?.circlePoints; track c.month) {
+        <text [attr.x]="c.cx" y="275" text-anchor="middle" fill="#64748b" font-size="11">
+          {{ c.month?.substring(0,3) }}
+        </text>
+        }
+
+        <text x="-140" y="5" transform="rotate(-90)" text-anchor="middle" fill="#475569" font-size="12"
+          font-weight="600">
+          Cost(INR)
+        </text>
+
+        <text x="320" y="298" text-anchor="middle" fill="#475569" font-size="12" font-weight="600">
+          Months
+        </text>
+
+      </svg>
+    </div>
+    }
+
+    <!-- Project Based Total Cost inside the box -->
+    @if (selectedHomeAzureProject && yearlyCost > 0 && visibleTrends.length > 0) {
+    <div
+      style="text-align:center; margin-top:0.75rem; padding:0.625rem; background:#f8fafc; border-radius:0.5rem; border:1.0px solid #e2e8f0; font-size:0.875rem; color:#475569;">
+      Total Cost ({{ selectedHomeAzureProject }}): <strong style="color:#2563eb;">₹{{ yearlyCost | number:'1.2-2'
+        }}</strong>
+    </div>
+    }
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- DEVOPS SERVICES SUMMARY (J – semantic status colours)                  -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+@if (!selectedHomeAzureProject || visibleTrends.length > 0) {
+<div class="section" style="margin-top:20px;">
+  <h2 style="text-align:center; margin-bottom:16px;">Azure Service Status</h2>
+
+  @if (isLoadingRepos || isLoadingProjects) {
+  <div class="loading-container" style="padding: 40px 0;">
+    <div class="spinner"></div>
+    <span class="loading-text">Loading service status...</span>
+  </div>
+  } @else if (servicesStatusError) {
+  <div style="color:#dc2626; font-size:13px;">{{ servicesStatusError }}</div>
+  } @else {
+  <table>
+    <tr>
+      <th>Service</th>
+      <th>Status</th>
+    </tr>
+    @for (srv of servicesStatus; track srv.service) {
+    <tr>
+      <td>{{ srv.service }}</td>
+      <td>
+        <span [class]="srv.status === 'Healthy' || srv.status === 'healthy'
+                         ? 'status-badge-healthy' : 'status-badge-alert'">
+          {{ srv.status || 'Unknown' }}
+        </span>
+      </td>
+    </tr>
+    }
+  </table>
+  }
+</div>
+}
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- PROJECT DISTRIBUTION DETAILS MODAL                                    -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+@if(showProjectDistributionDetails){
+<div class="modal-overlay">
+  <div class="modal-card" style="max-height:85vh; overflow-y:auto; width:50rem; max-width:95%;">
+    <div class="modal-header">
+      <h2 style="text-align:center; flex:1;">Project Repository Distribution Details</h2>
+      <button class="close-btn" (click)="closeProjectDistributionDetailsModal()">✕</button>
+    </div>
+
+    <div
+      style="display:flex; justify-content:flex-end; align-items:center; gap:0.5rem; margin-top:0.625rem; margin-bottom:0.625rem; padding-right:0.625rem;">
+      <label for="repo-sort-select" style="font-size:0.8125rem; color:#475569; font-weight:600;">Sort by Repository
+        Count:</label>
+      <select id="repo-sort-select" class="month-dropdown"
+        style="padding:0.375rem 0.75rem; font-size:0.8125rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
+        [(ngModel)]="repoSortOrder" (change)="modalCurrentPage = 1">
+        <option value="default">Default</option>
+        <option value="desc">Decreasing</option>
+        <option value="asc">Increasing</option>
+      </select>
+    </div>
+
+    <table style="margin-top:0.625rem;">
+      <tr>
+        <th>Project Name</th>
+        <th>Description</th>
+        <th>State</th>
+        <th>Visibility</th>
+        <th>Repositories</th>
+      </tr>
+      @for (item of paginatedModalDistribution; track item.name) {
+      <tr>
+        <td>{{ item.name }}</td>
+        <td style="font-size:0.75rem; color:#64748b;">{{ getProjectDescription(item.name) }}</td>
+        <td>
+          <span [class]="getProjectState(item.name) === 'wellFormed' || getProjectState(item.name) === 'Active'
+                         ? 'status-badge-healthy' : 'status-badge-alert'">
+            {{ getProjectState(item.name) }}
+          </span>
+        </td>
+        <td>
+          <span [class]="getProjectVisibility(item.name) === 'private'
+                         ? 'status-badge-alert' : 'status-badge-healthy'">
+            {{ getProjectVisibility(item.name) }}
+          </span>
+        </td>
+        <td style="text-align:center; color:#2563eb;">{{ item.count }}</td>
+      </tr>
+      }
+    </table>
+    @if (sortedProjectDistribution.length > 10) {
+    <div class="pagination-container standalone">
+      <div class="pagination-tracker">
+        Showing <strong>{{ (modalCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(modalCurrentPage *
+          pageSize, sortedProjectDistribution.length) }}</strong> of <strong>{{ sortedProjectDistribution.length
+          }}</strong> projects
+      </div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" (click)="modalCurrentPage = modalCurrentPage - 1"
+          [disabled]="modalCurrentPage === 1">← Previous</button>
+        <span class="pagination-tracker">Page <strong>{{ modalCurrentPage }}</strong> of <strong>{{ modalTotalPages
+            }}</strong></span>
+        <button class="pagination-btn" (click)="modalCurrentPage = modalCurrentPage + 1"
+          [disabled]="modalCurrentPage >= modalTotalPages">Next →</button>
+      </div>
+    </div>
+    }
+  </div>
+</div>
+}

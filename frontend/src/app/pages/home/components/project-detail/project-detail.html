@@ -1,0 +1,307 @@
+@if (isLoadingRepoDetails) {
+<div class="loading-container" style="min-height: 25rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+  <div class="spinner"></div>
+  <span class="loading-text">Loading repository details...</span>
+</div>
+} @else {
+<!-- Page Header -->
+<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem;">
+  <div class="nav-controls">
+    <button (click)="navigateBack()" [disabled]="!dashboardService.canGoBack()" class="nav-controls-btn btn-back" title="Back">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <button (click)="navigateForward()" [disabled]="!dashboardService.canGoForward()" class="nav-controls-btn btn-forward" title="Forward">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
+  </div>
+  <h1 style="margin: 0; font-size: 1.5rem; color: #1e293b;">{{ selectedProject?.name }}</h1>
+</div>
+
+<!-- Project Info Cards -->
+<div
+  style="display: grid; grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+
+  <div
+    style="background: var(--bg-card, #fff); border: 1.0px solid #e2e8f0; border-radius: 0.75rem; padding: 1.125rem 1.375rem;">
+    <div
+      style="font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-bottom: 0.375rem;">
+      ID</div>
+    <div style="font-size: 0.8125rem; font-weight: 600; color: #1e293b; word-break: break-all;">{{ selectedProject?.id }}
+    </div>
+  </div>
+
+  <div
+    style="background: var(--bg-card, #fff); border: 1.0px solid #e2e8f0; border-radius: 0.75rem; padding: 1.125rem 1.375rem;">
+    <div
+      style="font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-bottom: 0.375rem;">
+      State</div>
+    <div style="font-size: 0.875rem; font-weight: 600; color: #16a34a;">{{ selectedProject?.state || 'Active' }}</div>
+  </div>
+
+  <div
+    style="background: var(--bg-card, #fff); border: 1.0px solid #e2e8f0; border-radius: 0.75rem; padding: 1.125rem 1.375rem;">
+    <div
+      style="font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-bottom: 0.375rem;">
+      Visibility</div>
+    <div style="font-size: 0.875rem; font-weight: 600; color: #2563eb;">{{ selectedProject?.visibility || 'Private' }}
+    </div>
+  </div>
+
+  <div
+    style="background: var(--bg-card, #fff); border: 1.0px solid #e2e8f0; border-radius: 0.75rem; padding: 1.125rem 1.375rem;">
+    <div
+      style="font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-bottom: 0.375rem;">
+      Azure DevOps</div>
+    <a [href]="selectedProject?.url" target="_blank"
+      style="font-size: 0.875rem; font-weight: 600; color: #2563eb; text-decoration: none;">Open in DevOps ↗</a>
+  </div>
+
+</div>
+
+@if (selectedProject?.description) {
+<div
+  style="background: var(--bg-card, #fff); border: 1.0px solid #e2e8f0; border-radius: 0.75rem; padding: 1.125rem 1.375rem; margin-bottom: 2rem; color: #475569; font-size: 0.875rem;">
+  <span style="font-weight: 600; color: #1e293b;">Description: </span>{{ selectedProject?.description }}
+</div>
+}
+
+<!-- Repositories Section -->
+<h2
+  style="color: #1e293b; font-size: 1.125rem; font-weight: 700; border-bottom: 0.125rem solid #e2e8f0; padding-bottom: 0.625rem; margin-bottom: 1rem;">
+  Repository Details &amp; Operations
+  <span style="font-size: 0.8125rem; font-weight: 500; color: #64748b; margin-left: 0.625rem;">{{ totalReposCount }} repo(s)</span>
+</h2>
+
+@if (reposError) {
+<div class="error-banner">{{ reposError }}</div>
+} @else if (isLoadingRepos) {
+<div class="loading-container" style="padding: 2.5rem 0;">
+  <div class="spinner"></div>
+  <span class="loading-text">Loading repositories...</span>
+</div>
+} @else if (selectedProjectRepos.length === 0) {
+<p style="color: #6b7280; font-size: 0.875rem;">No repositories found in this project.</p>
+} @else {
+<table>
+  <tr>
+    <th>Repository Name</th>
+    <th>Default Branch</th>
+    <th style="text-align: center;">Actions</th>
+  </tr>
+  @for (repo of selectedProjectRepos; track repo.id || $index) {
+  <tr>
+    <td>{{ repo.name }}</td>
+    <td>{{ repo.defaultBranch || 'N/A' }}</td>
+    <td>
+      <div style="display: flex; gap: 0.5rem; width: 100%;">
+        <button class="action-small-btn commits-btn"
+          [class.active]="selectedRepoForDetails?.id === repo.id && activeRepoDetailsTab === 'commits'"
+          (click)="viewRepoCommits(repo)">Commits</button>
+        <button class="action-small-btn prs-btn"
+          [class.active]="selectedRepoForDetails?.id === repo.id && activeRepoDetailsTab === 'prs'"
+          (click)="viewRepoPRs(repo)">PRs</button>
+        <button class="action-small-btn branches-btn"
+          [class.active]="selectedRepoForDetails?.id === repo.id && activeRepoDetailsTab === 'branches'"
+          (click)="viewRepoBranches(repo)">Branches</button>
+        <button class="action-small-btn pushes-btn"
+          [class.active]="selectedRepoForDetails?.id === repo.id && activeRepoDetailsTab === 'pushes'"
+          (click)="viewRepoPushes(repo)">Pushes</button>
+      </div>
+    </td>
+  </tr>
+  }
+</table>
+@if (totalReposCount > pageSize) {
+<div class="pagination-container">
+  <div class="pagination-tracker">
+    Showing <strong>{{ (reposCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(reposCurrentPage * pageSize, totalReposCount) }}</strong> of <strong>{{ totalReposCount }}</strong> repositories
+  </div>
+  <div class="pagination-controls">
+    <button class="pagination-btn" (click)="changeReposPage(-1)" [disabled]="reposCurrentPage === 1">← Previous</button>
+    <span class="pagination-tracker">Page <strong>{{ reposCurrentPage }}</strong> of <strong>{{ reposTotalPages }}</strong></span>
+    <button class="pagination-btn" (click)="changeReposPage(1)" [disabled]="reposCurrentPage >= reposTotalPages">Next →</button>
+  </div>
+</div>
+}
+}
+
+<!-- Repository Dynamic Operations Sub-table -->
+@if (selectedRepoForDetails) {
+<div #repoDetailsAnchor style="margin-top: 2rem; border-top: 0.125rem solid #e2e8f0; padding-top: 1.25rem;">
+  <h3
+    style="color: #1e293b; text-transform: uppercase; display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem;">
+    {{ activeRepoDetailsTab }} for {{ selectedRepoForDetails.name }}
+    @if (activeRepoDetailsTab === 'branches' && repoBranchesCount !== null) {
+    <span
+      style="font-size: 0.8125rem; font-weight: 600; background: #9333ea; color: #fff; border-radius: 1.25rem; padding: 0.125rem 0.625rem; text-transform: none; letter-spacing: 0;">
+      {{ repoBranchesCount }} {{ repoBranchesCount === 1 ? 'branch' : 'branches' }}
+    </span>
+    }
+  </h3>
+
+  @if (isLoadingRepoDetails) {
+  <div style="position: relative; overflow: hidden; border-radius: 0.75rem; background: white; padding: 1.25rem;">
+    <div class="sleek-progress-bar"></div>
+    @for (_ of [1, 2, 3, 4, 5]; track $index) {
+    <div class="skeleton skeleton-row"></div>
+    }
+  </div>
+  } @else if (repoDetailsError) {
+  <div class="error-banner">{{ repoDetailsError }}</div>
+  } @else {
+
+  <!-- Commits sub-view -->
+  @if (activeRepoDetailsTab === 'commits') {
+  <table style="font-size: 0.8125rem;">
+    <tr>
+      <th>Commit ID</th>
+      <th>Author</th>
+      <th>Date (MM/DD/YY)</th>
+      <th>Comment</th>
+    </tr>
+    @for (c of repoCommits; track c.commitId || $index) {
+    <tr>
+      <td><code>{{ c.commitId?.substring(0, 8) }}</code></td>
+      <td>{{ c.author }}</td>
+      <td>{{ c.date | date:'short':'UTC' }}</td>
+      <td>{{ c.comment }}</td>
+    </tr>
+    } @empty {
+    <tr>
+      <td colspan="4" style="text-align: center;">No commits found.</td>
+    </tr>
+    }
+  </table>
+  @if (totalCommitsCount > pageSize) {
+  <div class="pagination-container">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (commitsCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(commitsCurrentPage * pageSize, totalCommitsCount) }}</strong> of <strong>{{ totalCommitsCount }}</strong> commits
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changeCommitsPage(-1)" [disabled]="commitsCurrentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ commitsCurrentPage }}</strong> of <strong>{{ commitsTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="changeCommitsPage(1)" [disabled]="commitsCurrentPage >= commitsTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+  }
+
+  <!-- PRs sub-view -->
+  @if (activeRepoDetailsTab === 'prs') {
+  <table style="font-size: 0.8125rem;">
+    <tr>
+      <th>ID</th>
+      <th>Title</th>
+      <th>Created By</th>
+      <th>Date(MM/DD/YY)</th>
+      <th>Status</th>
+    </tr>
+    @for (pr of repoPRs; track pr.pullRequestId || $index) {
+    <tr>
+      <td>{{ pr.pullRequestId }}</td>
+      <td>{{ pr.title }}</td>
+      <td>{{ pr.createdBy }}</td>
+      <td>{{ pr.creationDate | date:'short':'UTC' }}</td>
+      <td>{{ pr.status }}</td>
+    </tr>
+    } @empty {
+    <tr>
+      <td colspan="5" style="text-align: center;">No pull requests found.</td>
+    </tr>
+    }
+  </table>
+  @if (totalPRsCount > pageSize) {
+  <div class="pagination-container">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (prsCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(prsCurrentPage * pageSize, totalPRsCount) }}</strong> of <strong>{{ totalPRsCount }}</strong> pull requests
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changePRsPage(-1)" [disabled]="prsCurrentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ prsCurrentPage }}</strong> of <strong>{{ prsTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="changePRsPage(1)" [disabled]="prsCurrentPage >= prsTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+  }
+
+  <!-- Branches sub-view -->
+  @if (activeRepoDetailsTab === 'branches') {
+  <table style="font-size: 0.8125rem;">
+    <tr>
+      <th>Branch Name</th>
+      <th>Owner</th>
+      <th>Created Date</th>
+      <th>Last Modified By</th>
+      <th>Last Modified Date</th>
+    </tr>
+    @for (b of repoBranches; track b.name || $index) {
+    <tr>
+      <td>{{ b.name }}</td>
+      <td>{{ b.owner || 'N/A' }}</td>
+      <td>{{ b.createdDate || 'N/A' }}</td>
+      <td>{{ b.lastModifiedBy || 'N/A' }}</td>
+      <td>{{ b.lastModifiedDate || 'N/A' }}</td>
+    </tr>
+    } @empty {
+    <tr>
+      <td colspan="5" style="text-align: center;">No branches found.</td>
+    </tr>
+    }
+  </table>
+  @if (totalBranchesCount > pageSize) {
+  <div class="pagination-container">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (branchesCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(branchesCurrentPage * pageSize, totalBranchesCount) }}</strong> of <strong>{{ totalBranchesCount }}</strong> branches
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changeBranchesPage(-1)" [disabled]="branchesCurrentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ branchesCurrentPage }}</strong> of <strong>{{ branchesTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="changeBranchesPage(1)" [disabled]="branchesCurrentPage >= branchesTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+  }
+
+  <!-- Pushes sub-view -->
+  @if (activeRepoDetailsTab === 'pushes') {
+  <table style="font-size: 0.8125rem;">
+    <tr>
+      <th>Push ID</th>
+      <th>Date(MM/DD/YY)</th>
+      <th>Pushed By</th>
+    </tr>
+    @for (p of repoPushes; track p.pushId || $index) {
+    <tr>
+      <td>{{ p.pushId }}</td>
+      <td>{{ p.date | date:'short':'UTC' }}</td>
+      <td>{{ p.pushedBy }}</td>
+    </tr>
+    } @empty {
+    <tr>
+      <td colspan="3" style="text-align: center;">No pushes found.</td>
+    </tr>
+    }
+  </table>
+  @if (totalPushesCount > pageSize) {
+  <div class="pagination-container">
+    <div class="pagination-tracker">
+      Showing <strong>{{ (pushesCurrentPage - 1) * pageSize + 1 }}</strong> to <strong>{{ Math.min(pushesCurrentPage * pageSize, totalPushesCount) }}</strong> of <strong>{{ totalPushesCount }}</strong> pushes
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changePushesPage(-1)" [disabled]="pushesCurrentPage === 1">← Previous</button>
+      <span class="pagination-tracker">Page <strong>{{ pushesCurrentPage }}</strong> of <strong>{{ pushesTotalPages }}</strong></span>
+      <button class="pagination-btn" (click)="changePushesPage(1)" [disabled]="pushesCurrentPage >= pushesTotalPages">Next →</button>
+    </div>
+  </div>
+  }
+  }
+
+  }
+</div>
+}
+
+  }
