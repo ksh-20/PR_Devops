@@ -108,9 +108,12 @@ export class RepositoriesApiService {
     );
   }
 
-  /** Fetch every active PR across all projects + repos (no dropdowns needed). */
   getActivePRsAll(): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/pr/active-all`);
+  }
+
+  getLongPollEvents(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/ws/prs`);
   }
 
   getPRReview(repoId: string, prId: number, projectName: string): Observable<any> {

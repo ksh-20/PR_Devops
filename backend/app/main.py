@@ -18,7 +18,7 @@ from services.reviewer.webhooks_service import fetch_webhooks
 from services.reviewer.repos_service import fetch_repos
 from services.reviewer.project_service import fetch_projects
 from services.reviewer.PR_service import AzurePRManager
-from services.reviewer.auto_review_daemon import _review_pr_full,_post_review_comment,daemon_status
+from services.reviewer.auto_review_daemon import _review_pr_full,daemon_status
 
 from routes.boards_routes import router as boards_router
 from routes.pipelines_routes import router as pipelines_router
@@ -123,19 +123,17 @@ event_publisher = EventPublisher()
 
 @app.get("/api/ws/prs")
 async def sse_endpoint():
-    import json
+    import time
+    start_time = time.time()
     q = event_publisher.subscribe()
-    async def event_generator():
-        try:
-            while True:
-                data = await q.get()
-                yield f"data: {json.dumps(data)}\n\n"
-        except asyncio.CancelledError:
-            event_publisher.unsubscribe(q)
-        finally:
-            event_publisher.unsubscribe(q)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    try:
+        while time.time() - start_time < 20.0:
+            if not q.empty():
+                return q.get_nowait()
+            await asyncio.sleep(0.5)
+        return {"event": "timeout"}
+    finally:
+        event_publisher.unsubscribe(q)
 
 manager = AzurePRManager()
 
@@ -186,7 +184,7 @@ async def get_repos():
 
 
 @app.get("/api/pr/active-all")
-async def get_all_active_prs(background_tasks: BackgroundTasks):
+async def get_all_active_prs():
     def _scan_all() -> list:
         import time
         start_time = time.time()
@@ -224,7 +222,12 @@ async def get_all_active_prs(background_tasks: BackgroundTasks):
             repo = pr.get("repo_id")
             pr_id = pr.get("pullRequestId") or pr.get("id")
             if proj and repo and pr_id:
-                background_tasks.add_task(_check_and_review_pr, proj, repo, pr_id)
+                import threading
+                threading.Thread(
+                    target=_check_and_review_pr,
+                    args=(proj, repo, pr_id),
+                    daemon=True
+                ).start()
         return {"success": True, "pull_requests": results}
     except Exception as exc:
         executor.shutdown(wait=False)
@@ -318,36 +321,46 @@ def _has_ai_review(project: str, repo_id: str, pr_id: int) -> bool:
         logger.warning("[AutoReview] Failed checking threads for pr %d: %s", pr_id, exc)
     return False
 
-async def _check_and_review_pr(project: str, repo_id: str, pr_id: int):
+def _check_and_review_pr(project: str, repo_id: str, pr_id: int):
     try:
-        import anyio
-        already_reviewed = await anyio.to_thread.run_sync(_has_ai_review, project, repo_id, pr_id)
+        already_reviewed = _has_ai_review(project, repo_id, pr_id)
         if already_reviewed:
             logger.info("[AutoReview] PR %d already reviewed", pr_id)
             return
 
         logger.info("[AutoReview] PR %d not reviewed — triggering review", pr_id)
-        result = await anyio.to_thread.run_sync(_review_pr_full, project, repo_id, pr_id)
+        result = _review_pr_full(project, repo_id, pr_id)
         if result.get("success"):
             review_text = result.get("review", "")
-            await anyio.to_thread.run_sync(_post_review_comment, project, repo_id, pr_id, review_text)
-            logger.info("[AutoReview] Posted review comment for PR %d", pr_id)
+            manager.repo_id = str(repo_id)
+            manager.pr_id = int(pr_id)
+            manager.project = project
+            post_result = manager.post_review(review_text)
+            if post_result.get("success"):
+                logger.info("[AutoReview] Posted review comment for PR %d", pr_id)
+            else:
+                logger.error("[AutoReview] post_review failed for PR %d: %s", pr_id, post_result.get("message"))
         else:
             logger.error("[AutoReview] Failed to review PR %d: %s", pr_id, result.get("error"))
     except Exception as exc:
         logger.exception("[AutoReview] Error checking/reviewing PR %d: %s", pr_id, exc)
 
-async def _webhook_review_task(project: str, repo_id: str, pr_id: int) -> None:
+def _webhook_review_task(project: str, repo_id: str, pr_id: int) -> None:
     log_prefix = f"[Webhook] project='{project}' repo='{repo_id}' pr={pr_id}"
     logger.info("%s — starting review", log_prefix)
     try:
-        import anyio
-        result = await anyio.to_thread.run_sync(_review_pr_full, project, repo_id, pr_id)
+        result = _review_pr_full(project, repo_id, pr_id)
         if result.get("success"):
             review_text = result.get("review", "")
-            await anyio.to_thread.run_sync(_post_review_comment, project, repo_id, pr_id, review_text)
-            daemon_status["total_reviews_posted"] += 1
-            logger.info("%s — review comment posted successfully", log_prefix)
+            manager.repo_id = str(repo_id)
+            manager.pr_id = int(pr_id)
+            manager.project = project
+            post_result = manager.post_review(review_text)
+            if post_result.get("success"):
+                daemon_status["total_reviews_posted"] += 1
+                logger.info("%s — review comment posted successfully", log_prefix)
+            else:
+                logger.error("%s — post_review failed: %s", log_prefix, post_result.get("message"))
         else:
             err = result.get("error") or result.get("message", "unknown")
             logger.error("%s — review failed: %s", log_prefix, err)
@@ -356,7 +369,8 @@ async def _webhook_review_task(project: str, repo_id: str, pr_id: int) -> None:
 
 
 @app.post("/api/pr-webhook", status_code=202)
-async def pr_webhook(payload: Dict[str, Any], background_tasks: BackgroundTasks):
+@app.post("/", status_code=202)
+async def pr_webhook(payload: Dict[str, Any]):
     try:
         event_type: str = payload.get("eventType", "")
         resource: dict = payload.get("resource", {})
@@ -396,7 +410,12 @@ async def pr_webhook(payload: Dict[str, Any], background_tasks: BackgroundTasks)
         }
         asyncio.create_task(event_publisher.broadcast({"event": "pr_updated", "pr": pr_data}))
 
-        background_tasks.add_task(_webhook_review_task, project, repo_id, pr_id)
+        import threading
+        threading.Thread(
+            target=_webhook_review_task,
+            args=(project, repo_id, pr_id),
+            daemon=True
+        ).start()
 
         return {
             "status": "accepted",

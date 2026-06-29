@@ -28,7 +28,7 @@ export class ReviewerComponent implements OnInit {
   aiReviewContent = '';
   reviewError: string | null = null;
   diffError: string | null = null;
-  private eventSource: EventSource | null = null;
+
 
   // ── Derived getters ──────────────────────────────────────────────────
   get sourceTarget(): string {
@@ -78,17 +78,13 @@ export class ReviewerComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadActivePRs();
-    this.connectSSE();
+    this.startLongPolling();
   }
 
-  connectSSE(): void {
-    const sseUrl = API_BASE_URL + '/api/ws/prs';
-    this.eventSource = new EventSource(sseUrl);
-
-    this.eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.event === 'pr_updated' && data.pr) {
+  startLongPolling(): void {
+    this.reposApi.getLongPollEvents().subscribe({
+      next: (data: any) => {
+        if (data && data.event === 'pr_updated' && data.pr) {
           const pr = data.pr;
           const isClosed = pr.status === 'completed' || pr.status === 'abandoned' || pr.status === 'closed';
           if (isClosed) {
@@ -107,8 +103,12 @@ export class ReviewerComponent implements OnInit {
           }
           this.cdr.detectChanges();
         }
-      } catch (err) {}
-    };
+        this.startLongPolling();
+      },
+      error: () => {
+        setTimeout(() => this.startLongPolling(), 5000);
+      }
+    });
   }
 
 
