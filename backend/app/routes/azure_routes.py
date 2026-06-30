@@ -69,15 +69,16 @@ def _cache_query(cache_key: str, fetch_fn, cold_default: dict):
     return cold_default
 
 
-@router.get("/projects")
-async def get_azure_projects():
+def _load_projects_from_config() -> list[str]:
+    """Sync helper: reads config.json and returns project name list.
+    Shared by the /projects route and the /costs/global-overview endpoint
+    so the latter doesn't have to await an async function."""
     try:
-        # Resolve config path
         _config_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "config.json"))
         with open(_config_path, "r") as f:
             config = json.load(f)
     except Exception as e:
-        logger.error("[AzureRoutes] Failed to load config.json at %s: %s", _config_path, str(e))
+        logger.error("[AzureRoutes] Failed to load config.json: %s", str(e))
         config = {}
 
     projects = []
@@ -91,6 +92,12 @@ async def get_azure_projects():
                     words = prefix.lower().split("_")
                     name = "".join(word.capitalize() for word in words)
                 projects.append(name)
+    return projects
+
+
+@router.get("/projects")
+async def get_azure_projects():
+    projects = _load_projects_from_config()
     return {"success": True, "projects": projects}
 
 
@@ -143,25 +150,7 @@ async def get_subscriptions(project: str = Query(None)):
 @router.get("/costs/combined-yearly")
 async def get_combined_yearly_costs():
     try:
-        try:
-            _config_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "config.json"))
-            with open(_config_path, "r") as f:
-                config = json.load(f)
-        except Exception as e:
-            logger.error("[AzureRoutes] Failed to load config.json at %s: %s", _config_path, str(e))
-            config = {}
-
-        projects = []
-        for key in config.keys():
-            if key.endswith("_TENANT_ID"):
-                prefix = key[:-10]
-                if f"{prefix}_CLIENT_ID" in config and f"{prefix}_CLIENT_SECRET" in config:
-                    if prefix == "DOC_FLOW":
-                        name = "AiDocFlo"
-                    else:
-                        words = prefix.lower().split("_")
-                        name = "".join(word.capitalize() for word in words)
-                    projects.append(name)
+        projects = _load_projects_from_config()
 
         total_combined = 0.0
         for proj in projects:
@@ -197,9 +186,8 @@ async def get_combined_yearly_costs():
 @router.get("/costs/global-overview")
 async def get_global_overview():
     try:
-        # Get active projects
-        projects_res = get_azure_projects()
-        projects = projects_res.get("projects", [])
+        # Get active projects using sync helper (not the async route handler)
+        projects = _load_projects_from_config()
         
         overview = []
         for proj in projects:

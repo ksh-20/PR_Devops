@@ -5,7 +5,6 @@ logging = get_logging_conf()
 
 logger = logging.getLogger(__name__)
 
-# Resolve absolute config.json path relative to this file
 _config_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "config.json"))
 
 try:
@@ -25,7 +24,7 @@ password = config.get("password", "")
 
 secret = config.get("JWT_SECRET_KEY", "fallback-secret-for-dev")
 algorithm = config.get("JWT_ALGORITHM", "HS256")
-# Handle expiry dynamically, checking if it is an int/string or defaulting to 60
+
 try:
     expiry = int(config.get("JWT_EXPIRATION_MINUTES", 60))
 except (ValueError, TypeError):

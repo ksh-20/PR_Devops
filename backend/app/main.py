@@ -222,17 +222,11 @@ async def get_all_active_prs():
     try:
         results = await loop.run_in_executor(executor, _scan_all)
         executor.shutdown(wait=False)
-        for pr in results:
-            proj = pr.get("project_name")
-            repo = pr.get("repo_id")
-            pr_id = pr.get("pullRequestId") or pr.get("id")
-            if proj and repo and pr_id:
-                import threading
-                threading.Thread(
-                    target=_check_and_review_pr,
-                    args=(proj, repo, pr_id),
-                    daemon=True
-                ).start()
+        # NOTE: We do NOT auto-trigger LLM review here.
+        # Previously this spawned _check_and_review_pr() for every PR on every call,
+        # which combined with the frontend polling loop caused thousands of LLM calls.
+        # Reviews are now only triggered on-demand when the user selects a PR
+        # and the /api/pr_review endpoint is called.
         return {"success": True, "pull_requests": results}
     except Exception as exc:
         executor.shutdown(wait=False)

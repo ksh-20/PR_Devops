@@ -78,12 +78,17 @@ export class ReviewerComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadActivePRs();
+    // Long-polling is started only once on init.
+    // It will NOT restart automatically on timeout — only on real PR events.
     this.startLongPolling();
   }
 
   startLongPolling(): void {
     this.reposApi.getLongPollEvents().subscribe({
       next: (data: any) => {
+        // Only process and re-poll when we receive a real PR event.
+        // A timeout response ({ event: 'timeout' }) means no update — wait before retrying
+        // to avoid a tight loop that hammers the server (and triggers LLM calls).
         if (data && data.event === 'pr_updated' && data.pr) {
           const pr = data.pr;
           const isClosed = pr.status === 'completed' || pr.status === 'abandoned' || pr.status === 'closed';
@@ -102,10 +107,16 @@ export class ReviewerComponent implements OnInit {
             }
           }
           this.cdr.detectChanges();
+          // Re-subscribe immediately only after a real PR event
+          this.startLongPolling();
+        } else {
+          // Timeout or unknown event — wait 5 seconds before polling again
+          // This prevents the tight recursive loop that caused thousands of LLM calls
+          setTimeout(() => this.startLongPolling(), 5000);
         }
-        this.startLongPolling();
       },
       error: () => {
+        // On error, wait before retrying
         setTimeout(() => this.startLongPolling(), 5000);
       }
     });
