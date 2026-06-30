@@ -62,9 +62,9 @@ Line 1:
 [PR REVIEW] - Senior Engineer Evaluation Active
 
 Line 2:
-VERDICT: ACCEPTED
+VERDICT: AI Reviewed (ACCEPTED)
 or
-VERDICT: REJECTED
+VERDICT: AI Reviewed (REJECTED)
 
 Lines 3-7:
 
