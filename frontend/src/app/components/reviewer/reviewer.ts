@@ -1,9 +1,11 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RepositoriesApiService } from '../../services/api/repositories-api.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { API_BASE_URL } from '../../config';
+
+// ── 7-day rolling window ─────────────────────────────────────────────────────
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Component({
   selector: 'app-reviewer',
@@ -11,17 +13,20 @@ import { API_BASE_URL } from '../../config';
   templateUrl: './reviewer.html',
   styleUrl: './reviewer.css'
 })
-export class ReviewerComponent implements OnInit {
+export class ReviewerComponent implements OnInit, OnDestroy {
 
-  // ── Active PR list ───────────────────────────────────────────────────
+  // ── Active PR list (all fetched from backend, full truth)  ───────────────
   activePRs: any[] = [];
   isLoadingPRs = false;
   prsError: string | null = null;
 
-  // ── Selected PR ──────────────────────────────────────────────────────
+  // ── Timer handle to evict PRs that age past 7 days while page is open ───
+  private _staleCleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+  // ── Selected PR ──────────────────────────────────────────────────────────
   selectedPR: any = null;
 
-  // ── Review state ─────────────────────────────────────────────────────
+  // ── Review state ─────────────────────────────────────────────────────────
   isLoadingReview = false;
   reviewTriggered = false;
   diffFiles: any[] = [];
@@ -29,8 +34,25 @@ export class ReviewerComponent implements OnInit {
   reviewError: string | null = null;
   diffError: string | null = null;
 
+  // ── 7-day filter helper ──────────────────────────────────────────────────
+  /** Returns true if the PR was created within the last 7 days. */
+  private isWithin7Days(pr: any): boolean {
+    if (!pr?.creationDate) return false;
+    const age = Date.now() - new Date(pr.creationDate).getTime();
+    return age <= SEVEN_DAYS_MS;
+  }
 
-  // ── Derived getters ──────────────────────────────────────────────────
+  /**
+   * The visible list — only PRs created in the last 7 days.
+   * The full `activePRs` array is kept as the source of truth so that
+   * the long-poll merging logic stays simple and the stale-cleanup timer
+   * only needs to filter `activePRs` in one place.
+   */
+  get recentActivePRs(): any[] {
+    return this.activePRs.filter(pr => this.isWithin7Days(pr));
+  }
+
+  // ── Derived getters ──────────────────────────────────────────────────────
   get sourceTarget(): string {
     if (!this.selectedPR) return '';
     const srcRaw = this.selectedPR.sourceBranch || this.selectedPR.sourceRefName || '';
@@ -78,9 +100,38 @@ export class ReviewerComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadActivePRs();
+
     // Long-polling is started only once on init.
     // It will NOT restart automatically on timeout — only on real PR events.
     this.startLongPolling();
+
+    // Periodic stale-eviction: every 60 s, drop PRs older than 7 days
+    // from the backing array and deselect if the current PR aged out.
+    this._staleCleanupTimer = setInterval(() => {
+      const before = this.activePRs.length;
+      this.activePRs = this.activePRs.filter(pr => this.isWithin7Days(pr));
+
+      // If the currently-selected PR just aged out, clear the selection
+      if (this.selectedPR && !this.isWithin7Days(this.selectedPR)) {
+        this.selectedPR = null;
+        this.diffFiles = [];
+        this.aiReviewContent = '';
+        this.reviewError = null;
+        this.diffError = null;
+        this.reviewTriggered = false;
+      }
+
+      if (this.activePRs.length !== before) {
+        this.cdr.detectChanges();
+      }
+    }, 60_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this._staleCleanupTimer !== null) {
+      clearInterval(this._staleCleanupTimer);
+      this._staleCleanupTimer = null;
+    }
   }
 
   startLongPolling(): void {
@@ -91,21 +142,38 @@ export class ReviewerComponent implements OnInit {
         // to avoid a tight loop that hammers the server (and triggers LLM calls).
         if (data && data.event === 'pr_updated' && data.pr) {
           const pr = data.pr;
-          const isClosed = pr.status === 'completed' || pr.status === 'abandoned' || pr.status === 'closed';
+          const isClosed =
+            pr.status === 'completed' ||
+            pr.status === 'abandoned' ||
+            pr.status === 'closed';
+
           if (isClosed) {
+            // Remove regardless of age
             this.activePRs = this.activePRs.filter(
-              item => !(String(item.pullRequestId ?? item.id) === String(pr.pullRequestId ?? pr.id) && item.repo_id === pr.repo_id)
+              item =>
+                !(
+                  String(item.pullRequestId ?? item.id) ===
+                    String(pr.pullRequestId ?? pr.id) &&
+                  item.repo_id === pr.repo_id
+                )
             );
           } else {
-            const index = this.activePRs.findIndex(
-              item => String(item.pullRequestId ?? item.id) === String(pr.pullRequestId ?? pr.id) && item.repo_id === pr.repo_id
-            );
-            if (index > -1) {
-              this.activePRs[index] = { ...this.activePRs[index], ...pr };
-            } else {
-              this.activePRs = [pr, ...this.activePRs];
+            // Only add/update if the PR is within the 7-day window
+            if (this.isWithin7Days(pr)) {
+              const index = this.activePRs.findIndex(
+                item =>
+                  String(item.pullRequestId ?? item.id) ===
+                    String(pr.pullRequestId ?? pr.id) &&
+                  item.repo_id === pr.repo_id
+              );
+              if (index > -1) {
+                this.activePRs[index] = { ...this.activePRs[index], ...pr };
+              } else {
+                this.activePRs = [pr, ...this.activePRs];
+              }
             }
           }
+
           this.cdr.detectChanges();
           // Re-subscribe immediately only after a real PR event
           this.startLongPolling();
@@ -122,29 +190,33 @@ export class ReviewerComponent implements OnInit {
     });
   }
 
-
   loadActivePRs(): void {
     this.isLoadingPRs = true;
     this.prsError = null;
 
     this.reposApi.getActivePRsAll().subscribe({
       next: (res: any) => {
+        // Store the full list but only show the last 7 days via recentActivePRs getter
         this.activePRs = res?.pull_requests ?? [];
         this.isLoadingPRs = false;
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.prsError = err?.error?.message ?? 'Failed to load active pull requests.';
+        this.prsError =
+          err?.error?.message ?? 'Failed to load active pull requests.';
         this.isLoadingPRs = false;
         this.cdr.detectChanges();
       }
     });
   }
 
-
-  // ── Select a PR card → auto-load review ─────────────────────────────
+  // ── Select a PR card → auto-load review ─────────────────────────────────
   selectPR(pr: any): void {
-    if (this.selectedPR?.pullRequestId === pr.pullRequestId && this.selectedPR?.repo_id === pr.repo_id) return;
+    if (
+      this.selectedPR?.pullRequestId === pr.pullRequestId &&
+      this.selectedPR?.repo_id === pr.repo_id
+    )
+      return;
     this.selectedPR = pr;
     this.reviewTriggered = false;
     this.diffFiles = [];
@@ -156,12 +228,15 @@ export class ReviewerComponent implements OnInit {
   }
 
   isSelected(pr: any): boolean {
-    return this.selectedPR
-      && String(this.selectedPR.pullRequestId ?? this.selectedPR.id) === String(pr.pullRequestId ?? pr.id)
-      && this.selectedPR.repo_id === pr.repo_id;
+    return (
+      this.selectedPR &&
+      String(this.selectedPR.pullRequestId ?? this.selectedPR.id) ===
+        String(pr.pullRequestId ?? pr.id) &&
+      this.selectedPR.repo_id === pr.repo_id
+    );
   }
 
-  // ── Load diff + AI review ────────────────────────────────────────────
+  // ── Load diff + AI review ────────────────────────────────────────────────
   loadReview(): void {
     if (!this.selectedPR) return;
 
@@ -178,23 +253,35 @@ export class ReviewerComponent implements OnInit {
     this.cdr.detectChanges();
 
     forkJoin({
-      deltas: this.reposApi.getPRDeltas(repoId, prId, projectName)
-        .pipe(catchError(() => of({ success: false, message: 'Failed to fetch diffs.' }))),
-      review: this.reposApi.getPRReview(repoId, prId, projectName)
-        .pipe(catchError(() => of({ success: false, message: 'Failed to fetch AI review.' })))
+      deltas: this.reposApi
+        .getPRDeltas(repoId, prId, projectName)
+        .pipe(
+          catchError(() =>
+            of({ success: false, message: 'Failed to fetch diffs.' })
+          )
+        ),
+      review: this.reposApi
+        .getPRReview(repoId, prId, projectName)
+        .pipe(
+          catchError(() =>
+            of({ success: false, message: 'Failed to fetch AI review.' })
+          )
+        )
     }).subscribe({
       next: (res: any) => {
         if (res.deltas?.success) {
           this.diffFiles = res.deltas.files || [];
         } else {
-          this.diffError = res.deltas?.message || 'Failed to load code diffs.';
+          this.diffError =
+            res.deltas?.message || 'Failed to load code diffs.';
         }
 
         if (res.review?.success) {
           this.aiReviewContent = res.review.review || '';
           this.reviewTriggered = true;
         } else {
-          this.reviewError = res.review?.message || 'Failed to generate AI review.';
+          this.reviewError =
+            res.review?.message || 'Failed to generate AI review.';
         }
 
         this.isLoadingReview = false;
@@ -207,31 +294,33 @@ export class ReviewerComponent implements OnInit {
     });
   }
 
-  // ── Config file extensions to skip (no code suggestions for these) ──
+  // ── Config file extensions to skip ──────────────────────────────────────
   private readonly CONFIG_EXTS = [
     '.json', '.lock', '.yaml', '.yml', '.toml', '.ini', '.cfg',
     '.config', '.env', '.xml', '.properties', '.gitignore',
     '.editorconfig', '.prettierrc', '.eslintrc', '.babelrc'
   ];
 
-  // Returns deduplicated, non-config source files only.
-  // Also drops Azure DevOps tree/directory entries (no extension, path is "/").
+  /** Returns deduplicated, non-config source files only. */
   getCodeFiles(): any[] {
     const seen = new Set<string>();
     return this.diffFiles.filter(file => {
       const p = (file.path || '').toLowerCase().trim();
-      if (!p || p === '/') return false;                               // tree/root entry
+      if (!p || p === '/') return false;
       const filename = p.split('/').pop() || '';
-      if (!filename.includes('.')) return false;                        // no extension = directory
-      if (seen.has(p)) return false;                                   // duplicate
-      if (this.CONFIG_EXTS.some(ext => p.endsWith(ext))) return false; // config/lock file
+      if (!filename.includes('.')) return false;
+      if (seen.has(p)) return false;
+      if (this.CONFIG_EXTS.some(ext => p.endsWith(ext))) return false;
       seen.add(p);
       return true;
     });
   }
 
-  // Parses unified diff → [{lineNum, text}] with real line numbers from @@ headers
-  getDiffLines(diff: string, side: 'old' | 'new'): { lineNum: number; text: string }[] {
+  /** Parses unified diff → [{lineNum, text}] with real line numbers. */
+  getDiffLines(
+    diff: string,
+    side: 'old' | 'new'
+  ): { lineNum: number; text: string }[] {
     if (!diff) return [];
     const lines = diff.split('\n');
     const result: { lineNum: number; text: string }[] = [];
@@ -259,7 +348,7 @@ export class ReviewerComponent implements OnInit {
     return result;
   }
 
-  // ── Copy AI output ───────────────────────────────────────────────────
+  // ── Copy AI output ───────────────────────────────────────────────────────
   copyOutput(): void {
     const el = document.getElementById('rv-eval-content');
     if (el) navigator.clipboard.writeText(el.innerText).catch(() => {});

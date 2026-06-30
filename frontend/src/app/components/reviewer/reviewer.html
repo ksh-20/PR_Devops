@@ -6,12 +6,19 @@
 <div class="rv-list-header">
   <div class="rv-list-title">
     Active Pull Requests
-    @if (activePRs.length > 0) {
-      <span class="rv-pr-count">{{ activePRs.length }}</span>
+    @if (recentActivePRs.length > 0) {
+      <span class="rv-pr-count">{{ recentActivePRs.length }}</span>
     }
     @if (isLoadingPRs) {
       <span class="rv-title-spinner"></span>
     }
+    <!-- 7-day rolling window badge -->
+    <span style="margin-left:0.5rem; display:inline-flex; align-items:center;
+                 gap:0.25rem; font-size:0.6875rem; font-weight:600; color:#2563eb;
+                 background:#eff6ff; border:1px solid #bfdbfe;
+                 padding:0.125rem 0.5rem; border-radius:1rem; vertical-align:middle;">
+      Last 7 days
+    </span>
   </div>
 </div>
 
@@ -30,13 +37,28 @@
       </svg>
       {{ prsError }}
     </div>
-  } @else if (activePRs.length === 0) {
+  } @else if (recentActivePRs.length === 0) {
     <div class="rv-list-state">
-      <div class="spinner" style="width:22px;height:22px;border-width:3px;"></div>
-      <span>Waiting for active pull requests...</span>
+      @if (activePRs.length > 0) {
+        <!-- There are PRs but all are older than 7 days -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"
+             style="width:28px;height:28px;flex-shrink:0;">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <span style="color:#64748b; font-size:0.875rem; text-align:center;">
+          No pull requests opened in the last 7 days.<br>
+          <span style="color:#94a3b8; font-size:0.8125rem;">
+            {{ activePRs.length }} older PR(s) exist but are outside the 7-day window.
+          </span>
+        </span>
+      } @else {
+        <div class="spinner" style="width:22px;height:22px;border-width:3px;"></div>
+        <span>Waiting for active pull requests…</span>
+      }
     </div>
   } @else {
-    @for (pr of activePRs; track (pr.repo_id + ':' + (pr.pullRequestId ?? pr.id))) {
+    @for (pr of recentActivePRs; track (pr.repo_id + ':' + (pr.pullRequestId ?? pr.id))) {
       <div class="rv-pr-card" [class.rv-pr-card--selected]="isSelected(pr)" (click)="selectPR(pr)">
         <div class="rv-pr-card-left">
           <div class="rv-pr-card-id">#{{ pr.pullRequestId ?? pr.id }}</div>

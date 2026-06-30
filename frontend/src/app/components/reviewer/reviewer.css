@@ -405,7 +405,7 @@
 .rv-diff-pane {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* scrolling is handled by .rv-diff-pre */
 }
 
 .rv-diff-pane--old {
@@ -445,8 +445,51 @@
   line-height: 1.65;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 210px; /* ~6 visible lines; scrollable for more */
+  max-height: 210px;
   flex: 1;
+  /* Firefox thin scrollbars */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+/* ── Webkit scrollbars — ultra-thin, fade-in on hover ─────────────── */
+.rv-diff-pre::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+.rv-diff-pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rv-diff-pre::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Default: nearly invisible */
+.rv-diff-pre::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.0);
+  transition: background 0.25s ease;
+}
+/* Reveal on hover of the pane */
+.rv-diff-pane:hover .rv-diff-pre::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+}
+.rv-diff-pane:hover .rv-diff-pre::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.75);
+}
+
+/* Tint to match each pane — red for Current, green for Suggested */
+.rv-diff-pane--old:hover .rv-diff-pre::-webkit-scrollbar-thumb {
+  background: rgba(185, 28, 28, 0.2);
+}
+.rv-diff-pane--old:hover .rv-diff-pre::-webkit-scrollbar-thumb:hover {
+  background: rgba(185, 28, 28, 0.4);
+}
+.rv-diff-pane--new:hover .rv-diff-pre::-webkit-scrollbar-thumb {
+  background: rgba(21, 128, 61, 0.2);
+}
+.rv-diff-pane--new:hover .rv-diff-pre::-webkit-scrollbar-thumb:hover {
+  background: rgba(21, 128, 61, 0.4);
 }
 
 .rv-diff-line {
@@ -483,6 +526,6 @@
 .rv-diff-text {
   flex: 1;
   color: #334155;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre; /* keep code formatting; pane scrolls horizontally */
+  min-width: 0;
 }

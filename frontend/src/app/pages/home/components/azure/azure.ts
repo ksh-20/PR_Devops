@@ -61,22 +61,6 @@ export class AzureComponent implements OnInit {
   pageSize = 10;
   get Math() { return Math; }
 
-  get paginatedTopResources(): any[] {
-    const start = (this.resourcesCurrentPage - 1) * this.pageSize;
-    return this.topResourcesPieSlices.slice(start, start + this.pageSize);
-  }
-  get resourcesTotalPages(): number {
-    return Math.ceil(this.topResourcesPieSlices.length / this.pageSize);
-  }
-
-  get paginatedServiceCosts(): any[] {
-    const start = (this.servicesCurrentPage - 1) * this.pageSize;
-    return this.serviceCostsPieSlices.slice(start, start + this.pageSize);
-  }
-  get servicesTotalPages(): number {
-    return Math.ceil(this.serviceCostsPieSlices.length / this.pageSize);
-  }
-
   // Filter / loader states
   isLoadingAzure = false;
   isLoadingAzureRange = false;
@@ -597,13 +581,66 @@ export class AzureComponent implements OnInit {
     });
   }
 
+  resourceSearchQuery = '';
+
+  get filteredTopResources(): any[] {
+    if (!this.topResources) return [];
+    const query = (this.resourceSearchQuery || '').toLowerCase().trim();
+    if (!query) return this.topResources;
+    return this.topResources.filter(r => (r[1] || '').toLowerCase().includes(query));
+  }
+
+  get filteredResourceSlices(): any[] {
+    return this.buildPieSlices(this.filteredTopResources);
+  }
+
+  onResourceSearch() {
+    this.resourcesCurrentPage = 1;
+  }
+
   get topResourcesPieSlices(): any[] {
-    return this.buildPieSlices(this.topResources);
+    // For the visual pie chart, only show top 10 matching resources to prevent clutter
+    const slices = this.filteredResourceSlices;
+    if (slices.length <= 10) return slices;
+
+    const pieRows = [...this.filteredTopResources.slice(0, 9)];
+    const otherCost = this.filteredTopResources.slice(9).reduce((sum, r) => sum + (r[0] || 0), 0);
+    pieRows.push([otherCost, 'Other Resources']);
+    return this.buildPieSlices(pieRows);
+  }
+
+  get paginatedTopResources(): any[] {
+    const start = (this.resourcesCurrentPage - 1) * this.pageSize;
+    return this.filteredResourceSlices.slice(start, start + this.pageSize);
+  }
+
+  get resourcesTotalPages(): number {
+    return Math.ceil(this.filteredResourceSlices.length / this.pageSize);
+  }
+
+  get allServiceCostsSlices(): any[] {
+    const sorted = [...this.serviceCosts].sort((a, b) => (b[0] || 0) - (a[0] || 0));
+    return this.buildPieSlices(sorted);
   }
 
   get serviceCostsPieSlices(): any[] {
+    const slices = this.allServiceCostsSlices;
+    if (slices.length <= 10) return slices;
+
     const sorted = [...this.serviceCosts].sort((a, b) => (b[0] || 0) - (a[0] || 0));
-    return this.buildPieSlices(sorted);
+    const pieRows = [...sorted.slice(0, 9)];
+    const otherCost = sorted.slice(9).reduce((sum, r) => sum + (r[0] || 0), 0);
+    pieRows.push([otherCost, 'Other Services']);
+    return this.buildPieSlices(pieRows);
+  }
+
+  get paginatedServiceCosts(): any[] {
+    const start = (this.servicesCurrentPage - 1) * this.pageSize;
+    return this.allServiceCostsSlices.slice(start, start + this.pageSize);
+  }
+
+  get servicesTotalPages(): number {
+    return Math.ceil(this.allServiceCostsSlices.length / this.pageSize);
   }
 
   loadGlobalOverview() {

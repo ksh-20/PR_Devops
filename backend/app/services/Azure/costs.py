@@ -598,7 +598,7 @@ def fetch_top_resources(subscription_id: str, from_date: str = None, to_date: st
         sorted_rows = sorted(rows, key=lambda x: x[0], reverse=True) if rows else []
 
         cleaned_rows = []
-        for row in sorted_rows[:10]:
+        for row in sorted_rows:
             if len(row) >= 2:
                 cleaned = list(row)
                 cleaned[1] = _extract_resource_name(str(row[1]))
