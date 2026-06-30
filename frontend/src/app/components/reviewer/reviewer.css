@@ -366,3 +366,123 @@
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
 }
+
+/* ── Side-by-side diff view ─────────────────────────────────────────── */
+.rv-diff-file {
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.rv-diff-file-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 9px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  font-family: 'Courier New', Courier, monospace;
+  word-break: break-all;
+}
+
+.rv-diff-file-header svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.rv-diff-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.rv-diff-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rv-diff-pane--old {
+  border-right: 1px solid #e2e8f0;
+  background: #fff8f8;
+}
+
+.rv-diff-pane--new {
+  background: #f6fdf8;
+}
+
+.rv-diff-pane-label {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.rv-diff-pane--old .rv-diff-pane-label {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-bottom-color: #fecaca;
+}
+
+.rv-diff-pane--new .rv-diff-pane-label {
+  color: #15803d;
+  background: #f0fdf4;
+  border-bottom-color: #bbf7d0;
+}
+
+.rv-diff-pre {
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 210px; /* ~6 visible lines; scrollable for more */
+  flex: 1;
+}
+
+.rv-diff-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  white-space: pre;
+}
+
+.rv-diff-line:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.rv-diff-ln {
+  flex-shrink: 0;
+  width: 42px;
+  padding: 0 10px 0 8px;
+  text-align: right;
+  font-size: 11px;
+  color: #94a3b8;
+  user-select: none;
+  border-right: 1px solid #e2e8f0;
+  margin-right: 10px;
+}
+
+.rv-diff-pane--old .rv-diff-ln {
+  border-right-color: #fecaca;
+}
+
+.rv-diff-pane--new .rv-diff-ln {
+  border-right-color: #bbf7d0;
+}
+
+.rv-diff-text {
+  flex: 1;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

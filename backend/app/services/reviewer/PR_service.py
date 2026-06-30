@@ -264,7 +264,7 @@ class AzurePRManager:
             return delta_result
         
         sanitized_files = sanitize_files(delta_result["files"])
-
+        print(sanitized_files)
         review_result = review_pr(sanitized_files)
 
         return review_result

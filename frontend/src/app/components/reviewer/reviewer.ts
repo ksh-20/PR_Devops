@@ -196,6 +196,58 @@ export class ReviewerComponent implements OnInit {
     });
   }
 
+  // ── Config file extensions to skip (no code suggestions for these) ──
+  private readonly CONFIG_EXTS = [
+    '.json', '.lock', '.yaml', '.yml', '.toml', '.ini', '.cfg',
+    '.config', '.env', '.xml', '.properties', '.gitignore',
+    '.editorconfig', '.prettierrc', '.eslintrc', '.babelrc'
+  ];
+
+  // Returns deduplicated, non-config source files only.
+  // Also drops Azure DevOps tree/directory entries (no extension, path is "/").
+  getCodeFiles(): any[] {
+    const seen = new Set<string>();
+    return this.diffFiles.filter(file => {
+      const p = (file.path || '').toLowerCase().trim();
+      if (!p || p === '/') return false;                               // tree/root entry
+      const filename = p.split('/').pop() || '';
+      if (!filename.includes('.')) return false;                        // no extension = directory
+      if (seen.has(p)) return false;                                   // duplicate
+      if (this.CONFIG_EXTS.some(ext => p.endsWith(ext))) return false; // config/lock file
+      seen.add(p);
+      return true;
+    });
+  }
+
+  // Parses unified diff → [{lineNum, text}] with real line numbers from @@ headers
+  getDiffLines(diff: string, side: 'old' | 'new'): { lineNum: number; text: string }[] {
+    if (!diff) return [];
+    const lines = diff.split('\n');
+    const result: { lineNum: number; text: string }[] = [];
+    let oldLine = 1, newLine = 1;
+
+    for (const line of lines) {
+      if (line.startsWith('---') || line.startsWith('+++')) continue;
+      if (line.startsWith('@@')) {
+        const m = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+        if (m) { oldLine = +m[1]; newLine = +m[2]; }
+        continue;
+      }
+      if (line.startsWith('-')) {
+        if (side === 'old') result.push({ lineNum: oldLine, text: line.slice(1) });
+        oldLine++;
+      } else if (line.startsWith('+')) {
+        if (side === 'new') result.push({ lineNum: newLine, text: line.slice(1) });
+        newLine++;
+      } else {
+        const text = line.startsWith(' ') ? line.slice(1) : line;
+        result.push({ lineNum: side === 'old' ? oldLine : newLine, text });
+        oldLine++; newLine++;
+      }
+    }
+    return result;
+  }
+
   // ── Copy AI output ───────────────────────────────────────────────────
   copyOutput(): void {
     const el = document.getElementById('rv-eval-content');

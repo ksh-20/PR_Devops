@@ -127,13 +127,39 @@
     } @else if (diffFiles.length === 0) {
       <span class="rv-eval-placeholder">Waiting for PR to view code changes.</span>
     } @else {
-      @for (file of diffFiles; track file.path) {
-        <div style="margin-bottom: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
-          <div style="background: #f8fafc; padding: 8px 14px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-family: monospace; word-break: break-all; margin-right: 12px;">{{ file.path }}</span>
-            <span class="badge-blue" style="text-transform: uppercase; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">{{ file.change_type }}</span>
+      @for (file of getCodeFiles(); track file.path) {
+        <div class="rv-diff-file">
+          <div class="rv-diff-file-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span>{{ file.path }}</span>
           </div>
-          <pre style="margin: 0; padding: 14px; background: #fafcff; font-family: 'Courier New', Courier, monospace; font-size: 12.5px; overflow-x: auto; white-space: pre-wrap; color: #334155; line-height: 1.6; border-radius: 0 0 8px 8px;">{{ file.diff }}</pre>
+          <div class="rv-diff-panes">
+            <div class="rv-diff-pane rv-diff-pane--old">
+              <div class="rv-diff-pane-label">Current</div>
+              <div class="rv-diff-pre">
+                @for (ln of getDiffLines(file.diff, 'old'); track $index) {
+                  <div class="rv-diff-line">
+                    <span class="rv-diff-ln">{{ ln.lineNum }}</span>
+                    <span class="rv-diff-text">{{ ln.text }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="rv-diff-pane rv-diff-pane--new">
+              <div class="rv-diff-pane-label">Suggested</div>
+              <div class="rv-diff-pre">
+                @for (ln of getDiffLines(file.diff, 'new'); track $index) {
+                  <div class="rv-diff-line">
+                    <span class="rv-diff-ln">{{ ln.lineNum }}</span>
+                    <span class="rv-diff-text">{{ ln.text }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
         </div>
       }
     }
