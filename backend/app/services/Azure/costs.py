@@ -221,7 +221,8 @@ def fetch_service_costs(subscription_id: str, from_date: str = None, to_date: st
                         "totalCost": {"name": "Cost", "function": "Sum"}
                     },
                     "grouping": [
-                        {"type": "Dimension", "name": "ServiceName"}
+                        {"type": "Dimension", "name": "ServiceName"},
+                        {"type": "Dimension", "name": "MeterSubCategory"}
                     ]
                 }
             }
@@ -237,7 +238,8 @@ def fetch_service_costs(subscription_id: str, from_date: str = None, to_date: st
                         "totalCost": {"name": "Cost", "function": "Sum"}
                     },
                     "grouping": [
-                        {"type": "Dimension", "name": "ServiceName"}
+                        {"type": "Dimension", "name": "ServiceName"},
+                        {"type": "Dimension", "name": "MeterSubCategory"}
                     ]
                 }
             }

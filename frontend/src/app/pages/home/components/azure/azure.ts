@@ -577,6 +577,7 @@ export class AzureComponent implements OnInit {
         percentage: Math.round(pct * 100),
         lx: lx.toFixed(1),
         ly: ly.toFixed(1),
+        subServices: row[2] || []
       };
     });
   }
@@ -618,19 +619,84 @@ export class AzureComponent implements OnInit {
     return Math.ceil(this.filteredResourceSlices.length / this.pageSize);
   }
 
+  expandedServiceNames: { [serviceName: string]: boolean } = {};
+
+  toggleServiceExpansion(serviceName: string) {
+    this.expandedServiceNames[serviceName] = !this.expandedServiceNames[serviceName];
+    this.cdr.detectChanges();
+  }
+
+  get aggregatedServiceCosts(): any[] {
+    if (!this.serviceCosts || this.serviceCosts.length === 0) return [];
+
+    const groups: { [name: string]: { totalCost: number, subServices: any[] } } = {};
+    
+    this.serviceCosts.forEach(row => {
+      if (!row || row.length < 2) return;
+      const cost = Number(row[0]) || 0;
+      const serviceName = String(row[1]).trim() || 'Unknown';
+      const subServiceName = row.length >= 3 ? String(row[2]).trim() : 'General';
+
+      if (!groups[serviceName]) {
+        groups[serviceName] = { totalCost: 0, subServices: [] };
+      }
+      groups[serviceName].totalCost += cost;
+      
+      const existingSub = groups[serviceName].subServices.find(s => s.name === subServiceName);
+      if (existingSub) {
+        existingSub.cost += cost;
+      } else {
+        groups[serviceName].subServices.push({ name: subServiceName, cost });
+      }
+    });
+
+    const list = Object.keys(groups).map(name => {
+      const g = groups[name];
+      g.subServices.sort((a: any, b: any) => (b.cost as number) - (a.cost as number));
+
+      const parentCost = g.totalCost || 1;
+      g.subServices.forEach(sub => {
+        sub.percentage = Math.round((sub.cost / parentCost) * 100);
+      });
+
+      return [g.totalCost, name, g.subServices];
+    });
+
+    return list.sort((a: any, b: any) => (b[0] as number) - (a[0] as number));
+  }
+
   get allServiceCostsSlices(): any[] {
-    const sorted = [...this.serviceCosts].sort((a, b) => (b[0] || 0) - (a[0] || 0));
-    return this.buildPieSlices(sorted);
+    return this.buildPieSlices(this.aggregatedServiceCosts);
   }
 
   get serviceCostsPieSlices(): any[] {
     const slices = this.allServiceCostsSlices;
     if (slices.length <= 10) return slices;
 
-    const sorted = [...this.serviceCosts].sort((a, b) => (b[0] || 0) - (a[0] || 0));
-    const pieRows = [...sorted.slice(0, 9)];
-    const otherCost = sorted.slice(9).reduce((sum, r) => sum + (r[0] || 0), 0);
-    pieRows.push([otherCost, 'Other Services']);
+    const pieRows = [...this.aggregatedServiceCosts.slice(0, 9)];
+    const otherCost = this.aggregatedServiceCosts.slice(9).reduce((sum: number, r: any) => sum + (Number(r[0]) || 0), 0);
+    
+    // Aggregate other subservices too
+    const otherSubServices: any[] = [];
+    this.aggregatedServiceCosts.slice(9).forEach((r: any) => {
+      if (Array.isArray(r[2])) {
+        r[2].forEach((sub: any) => {
+          const existing = otherSubServices.find(s => s.name === sub.name);
+          if (existing) {
+            existing.cost += sub.cost;
+          } else {
+            otherSubServices.push({ name: sub.name, cost: sub.cost });
+          }
+        });
+      }
+    });
+    otherSubServices.sort((a: any, b: any) => (b.cost as number) - (a.cost as number));
+    const parentCost = otherCost || 1;
+    otherSubServices.forEach((sub: any) => {
+      sub.percentage = Math.round((sub.cost / parentCost) * 100);
+    });
+
+    pieRows.push([otherCost, 'Other Services', otherSubServices]);
     return this.buildPieSlices(pieRows);
   }
 
