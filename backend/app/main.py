@@ -18,7 +18,12 @@ from services.reviewer.webhooks_service import fetch_webhooks
 from services.reviewer.repos_service import fetch_repos
 from services.reviewer.project_service import fetch_projects
 from services.reviewer.PR_service import AzurePRManager
-from services.reviewer.auto_review_daemon import _review_pr_full,daemon_status
+from services.reviewer.auto_review_daemon import (
+    _review_pr_full,
+    daemon_status,
+    get_cached_review,
+    is_pr_reviewed,
+)
 
 from routes.boards_routes import router as boards_router
 from routes.pipelines_routes import router as pipelines_router
@@ -277,9 +282,40 @@ async def get_pr_deltas(repo_id: Optional[str] = Query(None),pr_id: Optional[int
 
     return manager.get_file_deltas()
 
+def _fetch_ai_review_from_devops(project: str, repo_id: str, pr_id: int) -> Optional[str]:
+    try:
+        import requests as _req
+        from core.config import AZURE_BASE_URL, AZURE_COLLECTION, AZURE_PAT
+        from requests.auth import HTTPBasicAuth
+        auth = HTTPBasicAuth("", AZURE_PAT)
+        url = (
+            f"{AZURE_BASE_URL}/{AZURE_COLLECTION}/{project}/_apis/git/repositories/"
+            f"{repo_id}/pullRequests/{pr_id}/threads?api-version=7.1"
+        )
+        resp = _req.get(url, auth=auth, verify=False, timeout=15)
+        if resp.status_code != 200:
+            return None
+        for thread in resp.json().get("value", []):
+            for comment in thread.get("comments", []):
+                content: str = comment.get("content", "")
+                if "# AI Pull Request Review" in content or "Senior Engineer Evaluation Active" in content:
+                    return content
+    except Exception as exc:
+        logger.warning("[pr_review] Failed to fetch threads from DevOps: %s", exc)
+    return None
+
 
 @app.get("/api/pr_review")
-async def review_pr(repo_id: Optional[str] = Query(None),pr_id: Optional[int] = Query(None),iteration_id: Optional[int] = Query(None), project: Optional[str] = Query(None)):
+async def review_pr(repo_id: Optional[str] = Query(None),pr_id: Optional[int] = Query(None),iteration_id: Optional[int] = Query(None),project: Optional[str] = Query(None)):
+    if repo_id and pr_id and project:
+        existing = _fetch_ai_review_from_devops(project, repo_id, pr_id)
+        if existing:
+            logger.info(
+                "[pr_review] Returning existing DevOps review comment for project='%s' repo='%s' pr=%d",
+                project, repo_id, pr_id,
+            )
+            return {"success": True, "review": existing, "source": "azure_devops"}
+
     if repo_id:
         manager.repo_id = repo_id
     if pr_id:
@@ -294,14 +330,28 @@ async def review_pr(repo_id: Optional[str] = Query(None),pr_id: Optional[int] = 
 
 @app.post("/api/post_review")
 async def post_review(request: ReviewRequest):
+    if request.project:
+        existing = _fetch_ai_review_from_devops(
+            request.project, request.repo_id, request.pr_id
+        )
+        if existing:
+            logger.info(
+                "[post_review] PR #%d already has an AI review in DevOps — skipping duplicate post.",
+                request.pr_id,
+            )
+            return {
+                "success": True,
+                "message": "Review already posted in Azure DevOps. No duplicate comment created.",
+                "review": existing,
+                "source": "azure_devops",
+            }
+
     manager.repo_id = request.repo_id
     manager.pr_id = request.pr_id
     if request.project:
         manager.project = request.project
 
     return manager.post_review(request.review)
-
-
 
 
 def _has_ai_review(project: str, repo_id: str, pr_id: int) -> bool:

@@ -29,6 +29,9 @@ daemon_status: dict = {
 }
 
 
+_review_cache: dict[str, str] = {}
+
+
 _auth = HTTPBasicAuth("", AZURE_PAT)
 
 
@@ -224,6 +227,8 @@ def run_poll_tick() -> None:
                     try:
                         _post_review_comment(project, repo_id, pr_id, review_text)
                         logger.info("[AutoReviewDaemon] Review posted → project='%s' repo='%s' pr=%d",project, repo_name, pr_id)
+                        cache_key = f"{project}::{repo_id}::{pr_id}"
+                        _review_cache[cache_key] = review_text
                         newly_reviewed.append({
                             "project": project,
                             "repo_id": repo_id,
@@ -267,7 +272,17 @@ def get_daemon_status() -> dict:
     return {**daemon_status}
 
 
+def get_cached_review(project: str, repo_id: str, pr_id: int) -> Optional[str]:
+    return _review_cache.get(f"{project}::{repo_id}::{pr_id}")
+
+
+def is_pr_reviewed(project: str, repo_id: str, pr_id: int) -> bool:
+    return f"{project}::{repo_id}::{pr_id}" in _review_cache
+
+
 def clear_reviewed_state() -> dict:
+    global _review_cache
+    _review_cache = {}
     daemon_status["review_log"] = []
     daemon_status["total_reviews_posted"] = 0
-    return {"success": True, "message": "In-memory review log cleared."}
+    return {"success": True, "message": "In-memory review log and cache cleared."}
