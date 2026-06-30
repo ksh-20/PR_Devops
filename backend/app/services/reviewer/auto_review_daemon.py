@@ -120,11 +120,13 @@ def _post_review_comment(project: str, repo_id: str, pr_id: int, review_text: st
     url = f"{AZURE_BASE_URL}/{AZURE_COLLECTION}/{project}/_apis/git/repositories/{repo_id}/pullRequests/{pr_id}/threads?api-version=7.1"
 
     formatted = (
+        "```markdown\n"
         "# AI Pull Request Review\n"
         "---\n"
         f"{review_text}\n"
         "---\n"
-        "<sub>Generated automatically by the PR Auto-Review Daemon.</sub>"
+        "Generated automatically by the PR Auto-Review Daemon.\n"
+        "```"
     )
     payload = {
         "comments": [{"parentCommentId": 0, "content": formatted, "commentType": 1}],

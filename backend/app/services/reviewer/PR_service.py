@@ -280,13 +280,15 @@ class AzurePRManager:
 
             url = f"{AZURE_BASE_URL}/{AZURE_COLLECTION}/{self.project}/_apis/git/repositories/{self.repo_id}/pullRequests/{self.pr_id}/threads?api-version=7.1"
 
-            formatted_review = f"""
-            # AI Pull Request Review
-            ---
-            {review_text}
-            ---
-            <sub>Generated automatically using LLM.</sub>
-            """
+            formatted_review = (
+                "```markdown\n"
+                "# AI Pull Request Review\n"
+                "---\n"
+                f"{review_text}\n"
+                "---\n"
+                "Generated automatically using LLM.\n"
+                "```"
+            )
 
             payload = {
                 "comments": [
