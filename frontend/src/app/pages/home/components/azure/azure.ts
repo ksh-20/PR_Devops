@@ -13,10 +13,11 @@ import {
   utcYearStartDate,
 } from '../../../../utils/utc-date.util';
 import { AzureCostPoint } from '../../../../models/azure-cost.models';
+import { CustomSelectComponent, SelectOption } from '../../../../components/custom-select/custom-select';
 
 @Component({
   selector: 'app-azure',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CustomSelectComponent],
   templateUrl: './azure.html',
   styleUrl: '../../home.css'
 })
@@ -391,36 +392,23 @@ export class AzureComponent implements OnInit {
     return this.costTrendPoints.reduce((sum, p) => sum + (p.cost || 0), 0);
   }
 
-  onSubscriptionChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const value = input.value;
-    const sub = this.subscriptions.find(s => s.displayName === value || s.subscriptionId === value);
-    const subId = sub ? sub.subscriptionId : '';
-    this.selectedSubscriptionId = subId;
-    this.subSearch = sub ? sub.displayName : '';
-
-    this.resourcesCurrentPage = 1;
-    this.servicesCurrentPage = 1;
-    this.totalCost = 0;
-    this.budgets = [];
-    this.topResources = [];
-    this.serviceCosts = [];
-    this.costTrendPoints = [];
-    this.costTrendRangeLabelUtc = '';
-    this.azureRangeLoadSeq++;
-
-    if (!subId) {
-      return;
-    }
-    this.loadAzureSubscriptionData(subId);
+  get projectSelectOptions(): SelectOption[] {
+    return [
+      { label: 'All Projects', value: '' },
+      ...this.azureProjects.map(p => ({ label: p, value: p }))
+    ];
   }
 
-  onAzureProjectChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const proj = input.value;
-    const match = this.azureProjects.find(p => p === proj);
-    this.selectedAzureProject = match || '';
-    this.projectSearch = match || '';
+  get subscriptionSelectOptions(): SelectOption[] {
+    return [
+      { label: 'Select Subscription', value: '' },
+      ...this.subscriptions.map(s => ({ label: s.displayName, value: s.subscriptionId }))
+    ];
+  }
+
+  onProjectSelect(proj: string) {
+    this.selectedAzureProject = proj || '';
+    this.projectSearch = proj || '';
     this.subSearch = '';
     this.selectedSubscriptionId = '';
     this.subscriptions = [];
@@ -439,6 +427,39 @@ export class AzureComponent implements OnInit {
       return;
     }
     this.loadSubscriptions();
+  }
+
+  onSubscriptionSelect(subId: string) {
+    const sub = this.subscriptions.find(s => s.subscriptionId === subId);
+    this.selectedSubscriptionId = subId || '';
+    this.subSearch = sub ? sub.displayName : '';
+
+    this.resourcesCurrentPage = 1;
+    this.servicesCurrentPage = 1;
+    this.totalCost = 0;
+    this.budgets = [];
+    this.topResources = [];
+    this.serviceCosts = [];
+    this.costTrendPoints = [];
+    this.costTrendRangeLabelUtc = '';
+    this.azureRangeLoadSeq++;
+
+    if (!subId) {
+      return;
+    }
+    this.loadAzureSubscriptionData(subId);
+  }
+
+  onSubscriptionChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    const sub = this.subscriptions.find(s => s.displayName === value || s.subscriptionId === value);
+    this.onSubscriptionSelect(sub ? sub.subscriptionId : '');
+  }
+
+  onAzureProjectChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.onProjectSelect(input.value);
   }
 
   private niceFloor(value: number): number {

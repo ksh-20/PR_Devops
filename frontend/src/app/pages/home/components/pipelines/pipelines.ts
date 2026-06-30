@@ -20,6 +20,8 @@ export class PipelinesComponent implements OnInit {
   pipelinesError: string | null = null;
   pipelineSearch = '';
 
+  projectsSearchTerm = '';
+
   currentPage = 1;
   projectsCurrentPage = 1;
   pageSize = 10;
@@ -49,9 +51,15 @@ export class PipelinesComponent implements OnInit {
     }
   }
 
+  onProjectsSearchChange(value: string) {
+    this.projectsSearchTerm = value;
+    this.projectsCurrentPage = 1;
+    this.loadProjects();
+  }
+
   loadProjects() {
     this.isLoadingProjects = true;
-    this.projectsApi.getProjects(this.projectsCurrentPage, this.pageSize).subscribe({
+    this.projectsApi.getProjects(this.projectsCurrentPage, this.pageSize, this.projectsSearchTerm).subscribe({
       next: (res: any) => {
         let projs = [];
         let total = 0;

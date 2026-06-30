@@ -15,44 +15,26 @@
     <!-- Project selector -->
     <div style="display:flex; align-items:center; gap:0.5rem;">
       <label for="azure-proj-select" style="font-size:0.8125rem; color:#475569; white-space:nowrap;">Azure Project:</label>
-      <input id="azure-proj-select" class="month-dropdown" style="width:12rem; padding:0.375rem 0.75rem; font-size:0.8125rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
-        list="azure-projects-list"
-        [value]="projectSearch || selectedAzureProject || ''"
-        (focus)="projectSearch = ''; $any($event.target).value = ''"
-        (blur)="projectSearch = selectedAzureProject || ''; $any($event.target).value = selectedAzureProject || ''"
-        (input)="projectSearch = $any($event.target).value"
-        (change)="onAzureProjectChange($event)"
-        placeholder="Select Azure Project" />
-      <datalist id="azure-projects-list">
-        @for (proj of filteredAzureProjects; track proj) {
-        <option [value]="proj">{{ proj }}</option>
-        }
-        @empty {
-          <option [value]="projectSearch">N/A</option>
-        }
-      </datalist>
+      <app-custom-select
+        style="width: 12rem;"
+        [options]="projectSelectOptions"
+        [value]="selectedAzureProject"
+        placeholder="Select Azure Project"
+        (valueChange)="onProjectSelect($event)">
+      </app-custom-select>
     </div>
 
     <!-- Subscription selector -->
     <div style="display:flex; align-items:center; gap:0.5rem;">
       <label for="sub-select" style="font-size:0.8125rem; color:#475569; white-space:nowrap;">Subscription:</label>
-      <input id="sub-select" class="month-dropdown" style="width:12rem; padding:0.375rem 0.75rem; font-size:0.8125rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
+      <app-custom-select
+        style="width: 12rem;"
+        [options]="subscriptionSelectOptions"
+        [value]="selectedSubscriptionId"
         [disabled]="!selectedAzureProject"
-        list="azure-subs-list"
-        [value]="subSearch || selectedSubscriptionName || ''"
-        (focus)="subSearch = ''; $any($event.target).value = ''"
-        (blur)="subSearch = selectedSubscriptionName || ''; $any($event.target).value = selectedSubscriptionName || ''"
-        (input)="subSearch = $any($event.target).value"
-        (change)="onSubscriptionChange($event)"
-        placeholder="Select Subscription" />
-      <datalist id="azure-subs-list">
-        @for (sub of filteredSubscriptions; track sub.subscriptionId || $index) {
-        <option [value]="sub.displayName">{{ sub.displayName }}</option>
-        }
-        @empty {
-          <option [value]="subSearch">N/A</option>
-        }
-      </datalist>
+        placeholder="Select Subscription"
+        (valueChange)="onSubscriptionSelect($event)">
+      </app-custom-select>
     </div>
 
     <!-- Date range selector -->

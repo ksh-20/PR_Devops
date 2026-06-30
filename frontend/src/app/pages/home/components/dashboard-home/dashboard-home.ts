@@ -5,6 +5,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { DashboardService } from '../../../../services/dashboard.service';
+import { CustomSelectComponent, SelectOption } from '../../../../components/custom-select/custom-select';
 
 // API Services imports
 import { ProjectsApiService } from '../../../../services/api/projects-api.service';
@@ -18,7 +19,7 @@ import { BoardsApiService } from '../../../../services/api/boards-api.service';
   selector: 'app-dashboard-home',
   templateUrl: './dashboard-home.html',
   styleUrl: '../../home.css',
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, CustomSelectComponent]
 })
 export class DashboardHomeComponent implements OnInit {
 
@@ -34,6 +35,22 @@ export class DashboardHomeComponent implements OnInit {
     const query = this.homeProjSearch.toLowerCase();
     return this.azureProjects.filter(proj => proj.toLowerCase().includes(query));
   }
+
+  /** Options for the Project custom-select — first entry clears the filter */
+  get projectSelectOptions(): SelectOption[] {
+    return [
+      { label: 'All Projects', value: '' },
+      ...this.azureProjects.map(p => ({ label: p, value: p }))
+    ];
+  }
+
+  /** Sort options for the Repository Count sort select */
+  readonly sortOptions: SelectOption[] = [
+    { label: 'Default',    value: 'default' },
+    { label: 'Decreasing', value: 'desc' },
+    { label: 'Increasing', value: 'asc' },
+  ];
+
   servicesStatus: any[] = [];
   projectDistribution: any[] = [];
   projectPieSlices: any[] = [];
@@ -780,8 +797,12 @@ export class DashboardHomeComponent implements OnInit {
 
   onHomeAzureProjectChange(event: Event) {
     const input = event.target as HTMLInputElement;
-    const proj = input.value;
-    const match = this.azureProjects.find(p => p === proj);
+    this.onProjectSelect(input.value);
+  }
+
+  /** Called by the custom-select component — receives the selected value string */
+  onProjectSelect(proj: string) {
+    const match = proj ? this.azureProjects.find(p => p === proj) : '';
     this.selectedHomeAzureProject = match || '';
     this.homeProjSearch = match || '';
     this.selectedHomeSubscriptionId = '';
@@ -801,6 +822,7 @@ export class DashboardHomeComponent implements OnInit {
     this.loadServicesStatus(this.selectedHomeAzureProject);
     this.loadWorkItemStatusDistribution(this.selectedHomeAzureProject);
   }
+
 
   getProjectDescription(projName: string): string {
     const p = this.projects.find(x => x.name === projName);

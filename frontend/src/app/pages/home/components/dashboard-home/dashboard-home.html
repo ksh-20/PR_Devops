@@ -67,23 +67,14 @@
   style="background:white; border:1.0px solid #e2e8f0; padding:1rem 1.5rem; border-radius:0.75rem;
             box-shadow:0 0.125rem 0.5rem rgba(0,0,0,0.04); margin-top:1.25rem; display:flex; align-items:center; gap:0.75rem;">
   <span style="font-size:0.875rem; font-weight:600; color:#334155;">Project:</span>
-  <input id="home-azure-proj-select" class="month-dropdown"
-    style="width:15rem; font-size:0.84375rem; padding:0.5rem 0.75rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
-    list="home-projects-list"
-    [value]="homeProjSearch || selectedHomeAzureProject || ''"
-    (focus)="homeProjSearch = ''; $any($event.target).value = ''"
-    (blur)="homeProjSearch = selectedHomeAzureProject || ''; $any($event.target).value = selectedHomeAzureProject || ''"
-    (input)="homeProjSearch = $any($event.target).value"
-    (change)="onHomeAzureProjectChange($event)"
-    placeholder="Select Project" />
-  <datalist id="home-projects-list">
-    @for (proj of filteredHomeProjects; track proj) {
-    <option [value]="proj">{{ proj }}</option>
-    }
-    @empty {
-      <option [value]="homeProjSearch">N/A</option>
-    }
-  </datalist>
+  <app-custom-select
+    style="width: 15rem;"
+    [options]="projectSelectOptions"
+    [value]="selectedHomeAzureProject"
+    placeholder="All Projects"
+    (valueChange)="onProjectSelect($event)">
+  </app-custom-select>
+
 </div>
 
 <!-- PROJECT STATUS BADGES — shown when a project is selected -->
@@ -396,13 +387,13 @@
       style="display:flex; justify-content:flex-end; align-items:center; gap:0.5rem; margin-top:0.625rem; margin-bottom:0.625rem; padding-right:0.625rem;">
       <label for="repo-sort-select" style="font-size:0.8125rem; color:#475569; font-weight:600;">Sort by Repository
         Count:</label>
-      <select id="repo-sort-select" class="month-dropdown"
-        style="padding:0.375rem 0.75rem; font-size:0.8125rem; border:1.0px solid #cbd5e1; border-radius:0.5rem; outline:none;"
-        [(ngModel)]="repoSortOrder" (change)="modalCurrentPage = 1">
-        <option value="default">Default</option>
-        <option value="desc">Decreasing</option>
-        <option value="asc">Increasing</option>
-      </select>
+      <app-custom-select
+        style="width: 11rem;"
+        [options]="sortOptions"
+        [value]="repoSortOrder"
+        (valueChange)="repoSortOrder = $event; modalCurrentPage = 1">
+      </app-custom-select>
+
     </div>
 
     <table style="margin-top:0.625rem;">

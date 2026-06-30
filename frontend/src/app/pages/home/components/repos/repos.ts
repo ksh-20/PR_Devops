@@ -5,10 +5,11 @@ import { ProjectsApiService } from '../../../../services/api/projects-api.servic
 import { RepositoriesApiService } from '../../../../services/api/repositories-api.service';
 
 import { FormsModule } from '@angular/forms';
+import { CustomSelectComponent, SelectOption } from '../../../../components/custom-select/custom-select';
 
 @Component({
   selector: 'app-repos',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CustomSelectComponent],
   templateUrl: './repos.html',
   styleUrl: '../../home.css'
 })
@@ -125,14 +126,23 @@ export class ReposComponent implements OnInit {
     return this.ownersList.filter(o => o.toLowerCase().includes(query));
   }
 
-  onOwnerChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const value = input.value;
-    const match = this.ownersList.find(o => o === value) || (value === 'All' ? 'All' : '');
-    this.selectedOwner = match || 'All';
-    this.ownerSearch = match || '';
+  get ownerSelectOptions(): SelectOption[] {
+    return [
+      { label: 'All Owners', value: 'All' },
+      ...this.ownersList.map(o => ({ label: o, value: o }))
+    ];
+  }
+
+  onOwnerSelect(owner: string) {
+    this.selectedOwner = owner || 'All';
+    this.ownerSearch = owner || '';
     this.currentPage = 1;
     this.loadProjectRepositories();
+  }
+
+  onOwnerChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.onOwnerSelect(input.value);
   }
 
   selectProject(project: any) {

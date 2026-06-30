@@ -1,0 +1,26 @@
+<div class="cs-wrapper" [class.cs-open]="isOpen" [class.cs-disabled]="disabled">
+
+  <!-- Trigger row -->
+  <div class="cs-trigger" (click)="toggle()">
+    <span class="cs-value">{{ selectedLabel }}</span>
+    <svg class="cs-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+         stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </div>
+
+  <!-- Dropdown list — always renders below, max 7 items then scrolls -->
+  @if (isOpen) {
+    <div class="cs-dropdown">
+      @for (opt of normalizedOptions; track opt.value) {
+        <div
+          class="cs-option"
+          [class.cs-option--selected]="opt.value === value"
+          (click)="select(opt)">
+          {{ opt.label }}
+        </div>
+      }
+    </div>
+  }
+
+</div>

@@ -1,7 +1,21 @@
 @if (!dashboardService.selectedProject) {
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
-  <h1 style="margin:0;">Test Plans</h1>
-</div>
+  <div class="tab-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <h1 style="margin: 0;">Test Plans</h1>
+    <div style="position: relative; width: 300px;">
+      <input 
+        class="filter-search"
+        type="text" 
+        [value]="projectsSearchTerm"
+        (input)="onProjectsSearchChange($any($event.target).value)"
+        placeholder="Search projects..." 
+        style="margin: 0; padding-right: 2.25rem; background-color: #f8fafc;"
+      />
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px !important; height: 16px !important; display: inline-block !important; color: #64748b; pointer-events: none;">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
+  </div>
 
 @if (isLoadingProjects) {
 <div class="loading-container">

@@ -1,7 +1,20 @@
 @if (!dashboardService.selectedProject) {
-  <div class="tab-header"
-    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div class="tab-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <h1 style="margin: 0;">Boards</h1>
+    <div style="position: relative; width: 300px;">
+      <input 
+        class="filter-search"
+        type="text" 
+        [value]="projectsSearchTerm"
+        (input)="onProjectsSearchChange($any($event.target).value)"
+        placeholder="Search projects..." 
+        style="margin: 0; padding-right: 2.25rem; background-color: #f8fafc;"
+      />
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px !important; height: 16px !important; display: inline-block !important; color: #64748b; pointer-events: none;">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
   </div>
 
   @if (isLoadingProjects) {
@@ -87,76 +100,40 @@
       <span style="font-size: 0.8125rem; color: #64748b; white-space: nowrap;">Filter by:</span>
 
       <!-- Sprint -->
-      <input class="month-dropdown" style="width: 8rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
-        list="sprint-filter-list"
-        [value]="sprintSearch || boardFilterSprint || ''"
-        (focus)="sprintSearch = ''; $any($event.target).value = ''"
-        (blur)="sprintSearch = boardFilterSprint || ''; $any($event.target).value = boardFilterSprint || ''"
-        (input)="sprintSearch = $any($event.target).value"
-        (change)="onSprintChange($event)"
-        placeholder="All Sprints" />
-      <datalist id="sprint-filter-list">
-        @for (s of filteredSprints; track s) {
-        <option [value]="s">{{ s }}</option>
-        }
-        @empty {
-          <option [value]="sprintSearch">N/A</option>
-        }
-      </datalist>
+      <app-custom-select
+        style="width: 8rem;"
+        [options]="sprintOptions"
+        [value]="boardFilterSprint"
+        placeholder="All Sprints"
+        (valueChange)="onSprintSelect($event)">
+      </app-custom-select>
 
       <!-- Type -->
-      <input class="month-dropdown" style="width: 8rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
-        list="type-filter-list"
-        [value]="typeSearch || boardFilterType || ''"
-        (focus)="typeSearch = ''; $any($event.target).value = ''"
-        (blur)="typeSearch = boardFilterType || ''; $any($event.target).value = boardFilterType || ''"
-        (input)="typeSearch = $any($event.target).value"
-        (change)="onTypeChange($event)"
-        placeholder="All Types" />
-      <datalist id="type-filter-list">
-        @for (t of filteredTypes; track t) {
-        <option [value]="t">{{ t }}</option>
-        }
-        @empty {
-          <option [value]="typeSearch">N/A</option>
-        }
-      </datalist>
+      <app-custom-select
+        style="width: 8rem;"
+        [options]="typeOptions"
+        [value]="boardFilterType"
+        placeholder="All Types"
+        (valueChange)="onTypeSelect($event)">
+      </app-custom-select>
 
       <!-- State -->
-      <input class="month-dropdown" style="width: 8rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
-        list="state-filter-list"
-        [value]="stateSearch || boardFilterState || ''"
-        (focus)="stateSearch = ''; $any($event.target).value = ''"
-        (blur)="stateSearch = boardFilterState || ''; $any($event.target).value = boardFilterState || ''"
-        (input)="stateSearch = $any($event.target).value"
-        (change)="onStateChange($event)"
-        placeholder="All States" />
-      <datalist id="state-filter-list">
-        @for (s of filteredStates; track s) {
-        <option [value]="s">{{ s }}</option>
-        }
-        @empty {
-          <option [value]="stateSearch">N/A</option>
-        }
-      </datalist>
+      <app-custom-select
+        style="width: 8rem;"
+        [options]="stateOptions"
+        [value]="boardFilterState"
+        placeholder="All States"
+        (valueChange)="onStateSelect($event)">
+      </app-custom-select>
 
       <!-- Assigned To -->
-      <input class="month-dropdown" style="width: 10rem; font-size: 0.8125rem; border: 1.0px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding: 0.375rem 0.75rem;"
-        list="assigned-filter-list"
-        [value]="assignedSearch || boardFilterAssigned || ''"
-        (focus)="assignedSearch = ''; $any($event.target).value = ''"
-        (blur)="assignedSearch = boardFilterAssigned || ''; $any($event.target).value = boardFilterAssigned || ''"
-        (input)="assignedSearch = $any($event.target).value"
-        (change)="onAssignedChange($event)"
-        placeholder="All Assignees" />
-      <datalist id="assigned-filter-list">
-        @for (a of filteredAssignees; track a) {
-        <option [value]="a">{{ a }}</option>
-        }
-        @empty {
-          <option [value]="assignedSearch">N/A</option>
-        }
-      </datalist>
+      <app-custom-select
+        style="width: 10rem;"
+        [options]="assigneeOptions"
+        [value]="boardFilterAssigned"
+        placeholder="All Assignees"
+        (valueChange)="onAssignedSelect($event)">
+      </app-custom-select>
 
       <!-- Clear -->
       @if (boardFilterSprint || boardFilterType || boardFilterState || boardFilterAssigned) {

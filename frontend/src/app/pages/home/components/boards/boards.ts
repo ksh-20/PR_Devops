@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { DashboardService } from '../../../../services/dashboard.service';
 import { ProjectsApiService } from '../../../../services/api/projects-api.service';
 import { BoardsApiService } from '../../../../services/api/boards-api.service';
+import { CustomSelectComponent, SelectOption } from '../../../../components/custom-select/custom-select';
 
 @Component({
   selector: 'app-boards',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CustomSelectComponent],
   templateUrl: './boards.html',
   styleUrl: '../../home.css'
 })
@@ -24,6 +25,8 @@ export class BoardsComponent implements OnInit {
   recentChanges: any[] = [];
   isLoadingChanges = false;
   changesError: string | null = null;
+
+  projectsSearchTerm = '';
 
   currentPage = 1;
   changesCurrentPage = 1;
@@ -71,63 +74,91 @@ export class BoardsComponent implements OnInit {
   assignedSearch = '';
 
   get filteredSprints(): string[] {
-    if (!this.sprintSearch) return this.workItemSprints;
-    const query = this.sprintSearch.toLowerCase();
-    return this.workItemSprints.filter(s => s.toLowerCase().includes(query));
+    return this.sprintOptions.map(o => o.value).filter(val => val !== '');
   }
 
   get filteredTypes(): string[] {
-    if (!this.typeSearch) return this.boardUniqueTypes;
-    const query = this.typeSearch.toLowerCase();
-    return this.boardUniqueTypes.filter(t => t.toLowerCase().includes(query));
+    return this.typeOptions.map(o => o.value).filter(val => val !== '');
   }
 
   get filteredStates(): string[] {
-    if (!this.stateSearch) return this.boardUniqueStates;
-    const query = this.stateSearch.toLowerCase();
-    return this.boardUniqueStates.filter(s => s.toLowerCase().includes(query));
+    return this.stateOptions.map(o => o.value).filter(val => val !== '');
   }
 
   get filteredAssignees(): string[] {
-    if (!this.assignedSearch) return this.boardUniqueAssignees;
-    const query = this.assignedSearch.toLowerCase();
-    return this.boardUniqueAssignees.filter(a => a.toLowerCase().includes(query));
+    return this.assigneeOptions.map(o => o.value).filter(val => val !== '');
+  }
+
+  get sprintOptions(): SelectOption[] {
+    return [
+      { label: 'All Sprints', value: '' },
+      ...this.workItemSprints.map(s => ({ label: s, value: s }))
+    ];
+  }
+
+  get typeOptions(): SelectOption[] {
+    return [
+      { label: 'All Types', value: '' },
+      ...this.boardUniqueTypes.map(t => ({ label: t, value: t }))
+    ];
+  }
+
+  get stateOptions(): SelectOption[] {
+    return [
+      { label: 'All States', value: '' },
+      ...this.boardUniqueStates.map(s => ({ label: s, value: s }))
+    ];
+  }
+
+  get assigneeOptions(): SelectOption[] {
+    return [
+      { label: 'All Assignees', value: '' },
+      ...this.boardUniqueAssignees.map(a => ({ label: a, value: a }))
+    ];
+  }
+
+  onSprintSelect(value: string) {
+    this.boardFilterSprint = value || '';
+    this.sprintSearch = value || '';
+    this.onFilterChange();
+  }
+
+  onTypeSelect(value: string) {
+    this.boardFilterType = value || '';
+    this.typeSearch = value || '';
+    this.onFilterChange();
+  }
+
+  onStateSelect(value: string) {
+    this.boardFilterState = value || '';
+    this.stateSearch = value || '';
+    this.onFilterChange();
+  }
+
+  onAssignedSelect(value: string) {
+    this.boardFilterAssigned = value || '';
+    this.assignedSearch = value || '';
+    this.onFilterChange();
   }
 
   onSprintChange(event: Event) {
     const input = event.target as HTMLInputElement;
-    const value = input.value;
-    const match = this.workItemSprints.find(s => s === value);
-    this.boardFilterSprint = match || '';
-    this.sprintSearch = match || '';
-    this.onFilterChange();
+    this.onSprintSelect(input.value);
   }
 
   onTypeChange(event: Event) {
     const input = event.target as HTMLInputElement;
-    const value = input.value;
-    const match = this.boardUniqueTypes.find(t => t === value);
-    this.boardFilterType = match || '';
-    this.typeSearch = match || '';
-    this.onFilterChange();
+    this.onTypeSelect(input.value);
   }
 
   onStateChange(event: Event) {
     const input = event.target as HTMLInputElement;
-    const value = input.value;
-    const match = this.boardUniqueStates.find(s => s === value);
-    this.boardFilterState = match || '';
-    this.stateSearch = match || '';
-    this.onFilterChange();
+    this.onStateSelect(input.value);
   }
 
   onAssignedChange(event: Event) {
     const input = event.target as HTMLInputElement;
-    const value = input.value;
-    const match = this.boardUniqueAssignees.find(a => a === value);
-    this.boardFilterAssigned = match || '';
-    this.assignedSearch = match || '';
-    this.onFilterChange();
+    this.onAssignedSelect(input.value);
   }
   collapsedSprints: Set<string> = new Set();
 
@@ -146,9 +177,15 @@ export class BoardsComponent implements OnInit {
     }
   }
 
+  onProjectsSearchChange(value: string) {
+    this.projectsSearchTerm = value;
+    this.projectsCurrentPage = 1;
+    this.loadProjects();
+  }
+
   loadProjects() {
     this.isLoadingProjects = true;
-    this.projectsApi.getProjects(this.projectsCurrentPage, 10).subscribe({
+    this.projectsApi.getProjects(this.projectsCurrentPage, 10, this.projectsSearchTerm).subscribe({
       next: (res: any) => {
         let projs = [];
         let total = 0;
