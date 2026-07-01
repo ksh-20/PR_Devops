@@ -53,3 +53,10 @@ AZURE_PAT = config["AZURE_PAT"]
 AZURE_COLLECTION = config["AZURE_COLLECTION"]
 AZURE_BASE_URL = config["AZURE_BASE_URL"]
 AZURE_PROJECT = config["AZURE_PROJECT"]
+
+# Admin module credentials
+admin_username = config.get("admin_username", "superadmin")
+admin_password = config.get("admin_password", "admin@123")
+
+# SQL database connection string for the Admin module
+db_connection_string = config.get("DB_CONNECTION_STRING", "")

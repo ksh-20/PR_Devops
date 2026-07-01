@@ -13,3 +13,4 @@ passlib[bcrypt]
 python-multipart
 openai
 detect-secrets
+pyodbc

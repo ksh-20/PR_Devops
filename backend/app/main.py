@@ -33,6 +33,7 @@ from routes.testplans_routes import router as testplans_router
 from routes.auth_routes import router as auth_router
 from routes.azure_routes import router as azure_router
 from routes.status_routes import router as status_router
+from routes.admin_routes import router as admin_router
 
 from core.sync_worker import SyncWorker
 from core.pr_watcher import PRWatcher
@@ -106,6 +107,7 @@ app.include_router(auth_router)
 app.include_router(azure_router, prefix="/api")
 app.include_router(status_router, prefix="/api")
 app.include_router(pr_watcher_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 
 class EventPublisher:
     def __init__(self):
