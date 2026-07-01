@@ -23,7 +23,11 @@ export class RepositoriesApiService {
       return of(cachedData);
     }
     return this.http.get<any>(`${this.baseUrl}/repos`).pipe(
-      tap(data => this.cache.set(cacheKey, data))
+      tap(data => {
+        if (data && data.success && !data.is_loading) {
+          this.cache.set(cacheKey, data);
+        }
+      })
     );
   }
 
@@ -38,7 +42,11 @@ export class RepositoriesApiService {
       url += `&owner=${encodeURIComponent(owner)}`;
     }
     return this.http.get<any>(url).pipe(
-      tap(data => this.cache.set(cacheKey, data))
+      tap(data => {
+        if (data && data.success && !data.is_loading) {
+          this.cache.set(cacheKey, data);
+        }
+      })
     );
   }
 

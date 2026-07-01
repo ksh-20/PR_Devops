@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
@@ -21,7 +21,10 @@ import { BoardsApiService } from '../../../../services/api/boards-api.service';
   styleUrl: '../../home.css',
   imports: [CommonModule, FormsModule, CustomSelectComponent]
 })
-export class DashboardHomeComponent implements OnInit {
+export class DashboardHomeComponent implements OnInit, OnDestroy {
+
+  pollingSubscription: any;
+  isLoadingPipelines = false;
 
   // Real data arrays
   projects: any[] = [];
@@ -181,6 +184,48 @@ export class DashboardHomeComponent implements OnInit {
     this.loadMultiProjectTrends();
     this.loadServicesStatus();
     this.loadAzureProjects();
+    this.startSmartPolling();
+  }
+
+  ngOnDestroy() {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+    }
+  }
+
+  startSmartPolling() {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+    }
+    import('rxjs').then(({ interval }) => {
+      this.pollingSubscription = interval(5000).subscribe(() => {
+        let stillLoading = false;
+        if (this.isLoadingProjects) {
+          this.loadProjects();
+          stillLoading = true;
+        }
+        if (this.isLoadingRepos) {
+          this.loadRepositories();
+          stillLoading = true;
+        }
+        if (this.isLoadingPipelines) {
+          this.loadActivePipelinesCount();
+          stillLoading = true;
+        }
+        if (this.isLoadingCombinedCost) {
+          this.loadCombinedYearlyCost();
+          stillLoading = true;
+        }
+        if (this.isLoadingMultiTrend) {
+          this.loadMultiProjectTrends();
+          stillLoading = true;
+        }
+        if (!stillLoading && this.pollingSubscription) {
+          this.pollingSubscription.unsubscribe();
+          this.pollingSubscription = null;
+        }
+      });
+    });
   }
 
   loadAzureProjects() {
@@ -231,6 +276,11 @@ export class DashboardHomeComponent implements OnInit {
     // Fetch ALL projects (large page size) so the distribution pie is complete
     this.projectsApi.getProjects(1, 999).subscribe({
       next: (res: any) => {
+        if (res && res.is_loading) {
+          this.isLoadingProjects = true;
+          this.cdr.detectChanges();
+          return;
+        }
         let projs = [];
         let total = 0;
         if (res && res.success && res.projects) {
@@ -264,6 +314,11 @@ export class DashboardHomeComponent implements OnInit {
     this.reposError = null;
     this.reposApi.getAllRepositories().subscribe({
       next: (res: any) => {
+        if (res && res.is_loading) {
+          this.isLoadingRepos = true;
+          this.cdr.detectChanges();
+          return;
+        }
         if (res && res.repositories && res.repositories.length > 0) {
           this.repositories = res.repositories;
         } else {
@@ -334,23 +389,33 @@ export class DashboardHomeComponent implements OnInit {
   }
 
   loadActivePipelinesCount() {
+    this.isLoadingPipelines = true;
     this.activePipelinesError = null;
     this.pipelinesApi.getActivePipelinesCount().subscribe({
       next: (res: any) => {
+        if (res && res.is_loading) {
+          this.isLoadingPipelines = true;
+          this.cdr.detectChanges();
+          return;
+        }
         if (res && res.success && res.count !== undefined) {
           this.activePipelinesCount = res.count;
+          this.isLoadingPipelines = false;
         } else if (res && !res.success) {
           this.activePipelinesCount = 0;
           this.activePipelinesError = res?.message || 'Failed to get active pipelines count.';
+          this.isLoadingPipelines = false;
         } else {
           this.activePipelinesCount = 0;
           this.activePipelinesError = 'Invalid response format for active pipelines count.';
+          this.isLoadingPipelines = false;
         }
         this.cdr.detectChanges();
       },
       error: (err) => {
         this.activePipelinesCount = 0;
         this.activePipelinesError = err.error?.detail || err.error?.message || err.message || 'Failed to get active pipelines count.';
+        this.isLoadingPipelines = false;
         this.cdr.detectChanges();
       }
     });
@@ -361,6 +426,11 @@ export class DashboardHomeComponent implements OnInit {
     this.combinedCostError = null;
     this.azureApi.getCombinedYearlyCost().subscribe({
       next: (res: any) => {
+        if (res && res.is_loading) {
+          this.isLoadingCombinedCost = true;
+          this.cdr.detectChanges();
+          return;
+        }
         if (res && res.success) {
           this.combinedYearlyCost = res.yearly_cost;
         } else {
@@ -394,6 +464,12 @@ export class DashboardHomeComponent implements OnInit {
 
     forkJoin(requests).subscribe({
       next: (results: any[]) => {
+        const anyLoading = results.some(r => r && r.is_loading);
+        if (anyLoading) {
+          this.isLoadingMultiTrend = true;
+          this.cdr.detectChanges();
+          return;
+        }
         const trends: any[] = [];
         let allMonths: string[] = [];
 

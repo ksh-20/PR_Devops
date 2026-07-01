@@ -18,6 +18,7 @@ _COLD_CACHE_RESPONSE = {
     "success": False,
     "count": 0,
     "repositories": [],
+    "is_loading": True,
     "message": "Data is warming up. The background sync is in progress — please retry in a few seconds.",
 }
 
@@ -27,6 +28,8 @@ devops_cache = _TtlCache(ttl=300)
 
 @router.get("/repos")
 async def get_all_repositories():
+    if not cache.get("last_sync_time") or not cache.has("repos"):
+        return _COLD_CACHE_RESPONSE
     return cache.get("repos", _COLD_CACHE_RESPONSE)
 
 
@@ -37,6 +40,8 @@ async def get_repositories(
     page_size: int = 10,
     owner: str = "All"
 ):
+    if not cache.get("last_sync_time"):
+        return _COLD_CACHE_RESPONSE
     cached_repos = cache.get("repos")
     if isinstance(cached_repos, dict) and cached_repos.get("success"):
         proj_repos = [

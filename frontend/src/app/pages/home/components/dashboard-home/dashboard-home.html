@@ -16,7 +16,9 @@
   <div class="card">
     <h3>Repositories</h3>
     @if (isLoadingRepos) {
-    <div class="skeleton skeleton-value"></div>
+    <div style="display: flex; align-items: center; justify-content: flex-start; height: 2.25rem; margin-top: 0.5rem;">
+      <div class="spinner" style="width: 1.5rem; height: 1.5rem; border-width: 0.1875rem; margin: 0;"></div>
+    </div>
     } @else if (reposError) {
     <div style="color:#dc2626; font-size:0.8125rem;">{{ reposError }}</div>
     } @else {
@@ -28,7 +30,9 @@
   <div class="card">
     <h3>Projects</h3>
     @if (isLoadingProjects) {
-    <div class="skeleton skeleton-value"></div>
+    <div style="display: flex; align-items: center; justify-content: flex-start; height: 2.25rem; margin-top: 0.5rem;">
+      <div class="spinner" style="width: 1.5rem; height: 1.5rem; border-width: 0.1875rem; margin: 0;"></div>
+    </div>
     } @else if (projectsError) {
     <div style="color:#dc2626; font-size:0.8125rem;">{{ projectsError }}</div>
     } @else {
@@ -39,7 +43,11 @@
   <!-- Active Pipelines -->
   <div class="card">
     <h3>Pipelines</h3>
-    @if (activePipelinesError) {
+    @if (isLoadingPipelines) {
+    <div style="display: flex; align-items: center; justify-content: flex-start; height: 2.25rem; margin-top: 0.5rem;">
+      <div class="spinner" style="width: 1.5rem; height: 1.5rem; border-width: 0.1875rem; margin: 0;"></div>
+    </div>
+    } @else if (activePipelinesError) {
     <div style="color:#dc2626; font-size:0.8125rem;">{{ activePipelinesError }}</div>
     } @else {
     <h2>{{ activePipelinesCount }}</h2>
@@ -50,7 +58,9 @@
   <div class="card">
     <h3>Cloud Cost (YTD)</h3>
     @if (isLoadingCombinedCost) {
-    <div class="skeleton skeleton-value"></div>
+    <div style="display: flex; align-items: center; justify-content: flex-start; height: 2.25rem; margin-top: 0.5rem;">
+      <div class="spinner" style="width: 1.5rem; height: 1.5rem; border-width: 0.1875rem; margin: 0;"></div>
+    </div>
     } @else if (combinedCostError) {
     <div style="color:#dc2626; font-size:0.8125rem;">{{ combinedCostError }}</div>
     } @else {

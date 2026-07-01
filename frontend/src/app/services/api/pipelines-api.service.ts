@@ -38,7 +38,11 @@ export class PipelinesApiService {
       return of(cachedData);
     }
     return this.http.get<any>(`${API_BASE_URL}/api/pipelines/active-count`).pipe(
-      tap(data => this.cache.set(cacheKey, data))
+      tap(data => {
+        if (data && data.success && !data.is_loading) {
+          this.cache.set(cacheKey, data);
+        }
+      })
     );
   }
 }

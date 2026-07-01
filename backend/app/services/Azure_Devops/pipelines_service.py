@@ -61,8 +61,17 @@ def fetch_pipelines(project_name):
 
 
 def fetch_active_pipelines_count():
-    projects_data = fetch_projects()
+    from core.data_cache import cache
+    if not cache.get("last_sync_time"):
+        return {"success": False, "is_loading": True, "count": 0}
+    
+    projects_data = cache.get("projects")
+    if not projects_data:
+        return {"success": False, "is_loading": True, "count": 0}
+    
     if not isinstance(projects_data, dict) or not projects_data.get("success") or "projects" not in projects_data:
+        if isinstance(projects_data, dict) and projects_data.get("is_loading"):
+            return {"success": False, "is_loading": True, "count": 0}
         return {"success": False, "count": 0}
     
     total_count = 0

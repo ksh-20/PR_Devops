@@ -113,6 +113,7 @@ _COLD_COST_RESPONSE = {"success": True, "total_cost": 0.0, "amount": 0.0}
 _COLD_SUBSCRIPTIONS = {
     "success": False,
     "subscriptions": [],
+    "is_loading": True,
     "message": "Data is warming up. The background sync is in progress — please retry in a few seconds.",
 }
 
@@ -120,6 +121,8 @@ _COLD_SUBSCRIPTIONS = {
 @router.get("/costs/trend")
 async def get_cost_trend(project: str = Query(None)):
     try:
+        if not cache.get("last_sync_time"):
+            return {"success": False, "is_loading": True, "trend": []}
         azure_project_var.set(project)
         cache_key = f"costs:trend:{project}" if project else "costs:trend"
         return _cache_query(
@@ -135,6 +138,8 @@ async def get_cost_trend(project: str = Query(None)):
 @router.get("/subscriptions")
 async def get_subscriptions(project: str = Query(None)):
     try:
+        if not cache.get("last_sync_time"):
+            return {"success": False, "is_loading": True, "subscriptions": []}
         azure_project_var.set(project)
         cache_key = f"subscriptions:{project}" if project else "subscriptions"
         return _cache_query(
@@ -150,6 +155,8 @@ async def get_subscriptions(project: str = Query(None)):
 @router.get("/costs/combined-yearly")
 async def get_combined_yearly_costs():
     try:
+        if not cache.get("last_sync_time"):
+            return {"success": False, "is_loading": True, "yearly_cost": 0.0}
         projects = _load_projects_from_config()
 
         total_combined = 0.0
@@ -186,6 +193,8 @@ async def get_combined_yearly_costs():
 @router.get("/costs/global-overview")
 async def get_global_overview():
     try:
+        if not cache.get("last_sync_time"):
+            return {"success": False, "is_loading": True, "overview": []}
         # Get active projects using sync helper (not the async route handler)
         projects = _load_projects_from_config()
         

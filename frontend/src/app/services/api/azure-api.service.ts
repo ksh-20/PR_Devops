@@ -39,7 +39,7 @@ export class AzureApiService {
   }
 
   private setCacheIfSuccess(key: string, data: any): void {
-    if (data && data.success !== false) {
+    if (data && data.success !== false && !data.is_loading) {
       this.cache.set(key, data);
     }
   }

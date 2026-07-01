@@ -8,12 +8,15 @@ _COLD_CACHE_RESPONSE = {
     "success": False,
     "count": 0,
     "projects": [],
+    "is_loading": True,
     "message": "Data is warming up. The background sync is in progress — please retry in a few seconds.",
 }
 
 
 @router.get("")
 async def get_projects(page: int = 1, page_size: int = 10, search: str | None = None):
+    if not cache.get("last_sync_time") or not cache.has("projects"):
+        return _COLD_CACHE_RESPONSE
     res = cache.get("projects", _COLD_CACHE_RESPONSE)
     if not res.get("success"):
         return res

@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DashboardService } from '../../../../services/dashboard.service';
 import { ProjectsApiService } from '../../../../services/api/projects-api.service';
@@ -13,8 +13,9 @@ import { CustomSelectComponent, SelectOption } from '../../../../components/cust
   templateUrl: './repos.html',
   styleUrl: '../../home.css'
 })
-export class ReposComponent implements OnInit {
+export class ReposComponent implements OnInit, OnDestroy {
 
+  pollingSubscription: any;
   projects: any[] = [];
   repositories: any[] = [];
   reposError: string | null = null;
@@ -52,12 +53,47 @@ export class ReposComponent implements OnInit {
     if (this.dashboardService.selectedProject) {
       this.loadProjectRepositories();
     }
+    this.startSmartPolling();
+  }
+
+  ngOnDestroy() {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+    }
+  }
+
+  startSmartPolling() {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+    }
+    import('rxjs').then(({ interval }) => {
+      this.pollingSubscription = interval(5000).subscribe(() => {
+        let stillLoading = false;
+        if (this.isLoadingProjects) {
+          this.loadProjects();
+          stillLoading = true;
+        }
+        if (this.isLoadingRepos) {
+          this.loadProjectRepositories();
+          stillLoading = true;
+        }
+        if (!stillLoading && this.pollingSubscription) {
+          this.pollingSubscription.unsubscribe();
+          this.pollingSubscription = null;
+        }
+      });
+    });
   }
 
   loadProjects() {
     this.isLoadingProjects = true;
     this.projectsApi.getProjects(this.projectsCurrentPage, this.pageSize, this.projectsSearchTerm).subscribe({
       next: (res: any) => {
+        if (res && res.is_loading) {
+          this.isLoadingProjects = true;
+          this.cdr.detectChanges();
+          return;
+        }
         let projs = [];
         let total = 0;
         if (res && res.success) {
@@ -93,10 +129,16 @@ export class ReposComponent implements OnInit {
     this.isLoadingRepos = true;
     this.reposApi.getRepositoriesByProject(projName, this.currentPage, this.pageSize, this.selectedOwner).subscribe({
       next: (res: any) => {
+        if (res && res.is_loading) {
+          this.isLoadingRepos = true;
+          this.cdr.detectChanges();
+          return;
+        }
         if (res && res.success) {
           this.repositories = res.repositories || [];
           this.totalReposCount = res.total_count || 0;
           this.ownersList = res.owners || [];
+          this.reposError = null;
         } else {
           this.repositories = [];
           this.totalReposCount = 0;
