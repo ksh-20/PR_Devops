@@ -1,0 +1,87 @@
+<div class="crud-page">
+  <div class="page-header">
+    <div>
+      <h1>Project Members</h1>
+      <p class="subtitle">{{ totalCount }} member(s) in the database</p>
+    </div>
+    <button class="btn-primary" (click)="openCreate()" id="create-member-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      Add Member
+    </button>
+  </div>
+
+  @if (error) { <div class="alert-error" style="margin: 16px 32px 0;">{{ error }}</div> }
+
+  <div class="table-wrapper" style="margin-top: 16px;">
+    @if (loading) { <div class="loading-overlay"><div class="spinner"></div></div> }
+    <table class="data-table">
+      <thead>
+        <tr><th>ID</th><th>Display Name</th><th>Username</th><th>Project ID</th><th>Role / Team</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        @for (item of items; track item.id) {
+          <tr>
+            <td class="id-cell">{{ item.id }}</td>
+            <td class="name-cell">{{ item.display_name || '—' }}</td>
+            <td>{{ item.unique_name || '—' }}</td>
+            <td>{{ item.project_id }}</td>
+            <td>{{ item.role || '—' }}</td>
+            <td class="action-cell">
+              <button class="btn-icon" title="Edit" (click)="openEdit(item)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="btn-icon btn-danger" title="Remove" (click)="confirmDelete(item.id)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>
+              </button>
+            </td>
+          </tr>
+        }
+        @if (!loading && items.length === 0) {
+          <tr><td colspan="6" class="empty-row">No members found.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <button class="page-btn" (click)="prevPage()" [disabled]="page <= 1">← Prev</button>
+    <span class="page-info">Page {{ page }} of {{ totalPages }}</span>
+    <button class="page-btn" (click)="nextPage()" [disabled]="page >= totalPages">Next →</button>
+  </div>
+
+  @if (showModal) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ isEditing ? 'Edit Project Member' : 'Add Project Member' }}</h2>
+          <button class="modal-close" (click)="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          @if (modalError) { <div class="alert-error">{{ modalError }}</div> }
+          <div class="field-group"><label>Project ID *</label><input id="member-proj-id" type="number" [(ngModel)]="form.project_id" placeholder="Internal project ID"/></div>
+          <div class="field-group"><label>Display Name *</label><input id="member-display" type="text" [(ngModel)]="form.display_name" placeholder="Full name"/></div>
+          <div class="field-group"><label>Username</label><input id="member-unique" type="text" [(ngModel)]="form.unique_name" placeholder="Username"/></div>
+          <div class="field-group"><label>Azure User ID</label><input id="member-azure-id" type="text" [(ngModel)]="form.azure_user_id" placeholder="Azure object ID"/></div>
+          <div class="field-group"><label>Role / Team</label><input id="member-role" type="text" [(ngModel)]="form.role" placeholder="e.g. Developers"/></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" (click)="closeModal()">Cancel</button>
+          <button class="btn-primary" (click)="save()" [disabled]="saving">{{ saving ? 'Saving...' : (isEditing ? 'Save Changes' : 'Add Member') }}</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (deleteId !== null) {
+    <div class="modal-overlay" (click)="cancelDelete()">
+      <div class="modal modal-sm" (click)="$event.stopPropagation()">
+        <div class="modal-header"><h2>Remove Member</h2></div>
+        <div class="modal-body"><p>Remove this member from the project? This cannot be undone.</p></div>
+        <div class="modal-footer">
+          <button class="btn-ghost" (click)="cancelDelete()">Cancel</button>
+          <button class="btn-delete" (click)="doDelete()" [disabled]="deleting">{{ deleting ? 'Removing...' : 'Remove' }}</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

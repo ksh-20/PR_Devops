@@ -1,0 +1,49 @@
+<div class="login-container">
+
+  <div class="login-card">
+
+    <h2>Admin Login</h2>
+
+    @if (errorMessage) {
+      <div class="error-message">{{ errorMessage }}</div>
+    }
+
+    <form #form="ngForm" (ngSubmit)="onSubmit(form)">
+
+      <input
+        id="admin-username"
+        type="text"
+        name="username"
+        placeholder="Username"
+        ngModel
+        required
+        autocomplete="username"
+      />
+
+      <input
+        id="admin-password"
+        type="password"
+        name="password"
+        placeholder="Password"
+        ngModel
+        required
+        autocomplete="current-password"
+      />
+
+      <button type="submit" [class.loading]="isLoading" [disabled]="isLoading">
+        @if (isLoading) {
+          <span class="spinner"></span> Authenticating...
+        } @else {
+          Login
+        }
+      </button>
+
+    </form>
+
+    <p class="toggle-text" style="margin-top: 0.5rem;">
+      <a routerLink="/login" style="color: #d97706; text-decoration: none; font-weight: 600; font-size: 0.84375rem;">← Back to Member Login</a>
+    </p>
+
+  </div>
+
+</div>

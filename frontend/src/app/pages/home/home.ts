@@ -12,6 +12,8 @@ import { BoardsComponent } from './components/boards/boards';
 import { TestplansComponent } from './components/testplans/testplans';
 import { AzureComponent } from './components/azure/azure';
 import { ReviewerComponent } from '../../components/reviewer/reviewer';
+import { AdminPortal } from '../admin/admin';
+import { AdminAuthService } from '../../services/admin-auth.service';
 
 @Component({
   selector: 'app-home',
@@ -25,11 +27,16 @@ import { ReviewerComponent } from '../../components/reviewer/reviewer';
     BoardsComponent,
     TestplansComponent,
     AzureComponent,
-    ReviewerComponent
+    ReviewerComponent,
+    AdminPortal
   ],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
 export class Home {
-  constructor(public dashboardService: DashboardService) {}
+
+  constructor(
+    public dashboardService: DashboardService,
+    public adminAuth: AdminAuthService
+  ) {}
 }

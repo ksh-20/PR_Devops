@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { DashboardService } from '../../services/dashboard.service';
+import { AdminAuthService } from '../../services/admin-auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -18,8 +19,17 @@ export class Navbar {
   constructor(
     public authService: AuthService,
     private router: Router,
-    public dashboardService: DashboardService
+    public dashboardService: DashboardService,
+    public adminAuthService: AdminAuthService
   ) {}
+
+  isAdminActive(): boolean {
+    return this.router.url.startsWith('/home') &&
+           this.dashboardService.selectedModule === 'Admin' &&
+           this.dashboardService.selectedPage === 'admin';
+  }
+
+
 
   isDevOpsActive(): boolean {
     return this.router.url.startsWith('/home') &&
@@ -93,6 +103,20 @@ export class Navbar {
     this.dashboardService.setModule('Reviewer');
 
     this.dashboardService.selectedPage = 'reviewer';
+
+    this.dashboardService.sidebarVisible = false;
+
+    this.showCloudOps = false;
+
+    this.router.navigate(['/home']);
+
+  }
+
+  selectAdmin() {
+
+    this.dashboardService.setModule('Admin');
+
+    this.dashboardService.selectedPage = 'admin';
 
     this.dashboardService.sidebarVisible = false;
 

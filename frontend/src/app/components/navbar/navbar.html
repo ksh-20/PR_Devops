@@ -23,6 +23,16 @@
          (click)="selectReviewer()">
         Reviewer
       </a>
+
+      @if (adminAuthService.isAdminLoggedIn) {
+        <a routerLink="/home" class="nav-link nav-link-admin"
+           [class.active]="isAdminActive()"
+           (click)="selectAdmin()">
+          Admin Portal
+        </a>
+      }
+
+
     </div>
   </div>
 

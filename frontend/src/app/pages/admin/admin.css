@@ -1,0 +1,88 @@
+:host {
+  display: block;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+/* ── Shell layout ───────────────────────────────────────────── */
+
+.admin-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f5f7fa;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+
+.admin-header {
+  height: 60px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  z-index: 10;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.2px;
+}
+
+.shield-icon {
+  width: 22px;
+  height: 22px;
+  color: #2563eb;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.25));
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ── Main content area ──────────────────────────────────────── */
+
+.admin-main {
+  flex: 1;
+  overflow-y: auto;
+  background: #f5f7fa;
+  min-width: 0;
+  padding: 1.875rem;
+}

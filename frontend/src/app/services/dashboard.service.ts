@@ -10,7 +10,9 @@ const SESSION_KEY_PAGE   = 'dashboard_selectedPage';
 export class DashboardService {
 
   // Restore module from sessionStorage so refresh keeps the user on the same section
-  selectedModule: string = sessionStorage.getItem(SESSION_KEY_MODULE) || '';
+  selectedModule: string = (sessionStorage.getItem(SESSION_KEY_MODULE) === 'Admin' && localStorage.getItem('is_admin_logged_in') !== 'true')
+    ? 'DevOps'
+    : (sessionStorage.getItem(SESSION_KEY_MODULE) || '');
 
   private selectedPageSubject = new BehaviorSubject<string>(
     sessionStorage.getItem(SESSION_KEY_PAGE) || 'home'
@@ -18,19 +20,30 @@ export class DashboardService {
   selectedPage$ = this.selectedPageSubject.asObservable();
 
   get selectedPage(): string {
-    return this.selectedPageSubject.value;
+    const page = this.selectedPageSubject.value;
+    if (page === 'admin' && localStorage.getItem('is_admin_logged_in') !== 'true') {
+      return 'home';
+    }
+    return page;
   }
 
   set selectedPage(page: string) {
+    if (page === 'admin' && localStorage.getItem('is_admin_logged_in') !== 'true') {
+      page = 'home';
+    }
     sessionStorage.setItem(SESSION_KEY_PAGE, page);
     this.selectedPageSubject.next(page);
   }
 
   // Override selectedModule setter to also persist to sessionStorage
   setModule(module: string): void {
+    if (module === 'Admin' && localStorage.getItem('is_admin_logged_in') !== 'true') {
+      module = 'DevOps';
+    }
     this.selectedModule = module;
     sessionStorage.setItem(SESSION_KEY_MODULE, module);
   }
+
 
   sidebarVisible = false;
 
